@@ -46,25 +46,29 @@ class IndexSort:
 # DATABASE_ENDPOINT
 class Index:
 
+	name = None
 	datadir = None
 	redis_host = None
 	role = None
 	db_uri = None
 	db_table = None
 	db_storage_options = None
+	user = None
 
 	indexes = {}
 	idxlocks = {}
 	fragid = 0
 
 	@classmethod
-	def init(cls, fragid, datadir, db_uri, db_storage_options, redis_host, role):
-		cls.datadir = datadir
+	def init(cls, index, fragid, index_uri, db_uri, storage_options, redis, role, user):
+		cls.name = index
 		cls.fragid = fragid
-		cls.db_uri = db_uri
-		cls.db_storage_options = db_storage_options
-		cls.redis_host = redis_host
+		cls.datadir = os.path.join(index_uri, index)
+		cls.db_uri = os.path.join(db_uri, index)
+		cls.db_storage_options = storage_options
+		cls.redis_host = redis
 		cls.role = role
+		cls.user = user
 
 		#cls.load(datadir)
 
