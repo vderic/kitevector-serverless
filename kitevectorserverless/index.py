@@ -47,14 +47,24 @@ class IndexSort:
 class Index:
 
 	datadir = None
+	redis_host = None
+	role = None
+	db_uri = None
+	db_table = None
+	db_storage_options = None
+
 	indexes = {}
 	idxlocks = {}
 	fragid = 0
 
 	@classmethod
-	def init(cls, fragid, datadir):
+	def init(cls, fragid, datadir, db_uri, db_storage_options, redis_host, role):
 		cls.datadir = datadir
 		cls.fragid = fragid
+		cls.db_uri = db_uri
+		cls.db_storage_options = db_storage_options
+		cls.redis_host = redis_host
+		cls.role = role
 
 		#cls.load(datadir)
 
@@ -155,6 +165,9 @@ class Index:
 				raise ValueError('Index {} already exists'.format(req['name']))
 
 			cls.save_index_meta(r, req)
+
+			cls.db_table = db.KVDeltaTable(cls.db_uri, req['schema'], cls.db_storage_options)
+			cls.db_table.create()
 
 			# save index to processing index so that we can keep track of the status
 			cls.indexes[idxkey] = p

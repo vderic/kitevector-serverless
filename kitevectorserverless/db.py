@@ -247,7 +247,7 @@ class KVDeltaTable(BaseVector):
 		dt = self.get_dt()
 		write_deltalake(dt, tab, mode='append')
 
-	def delete(self, predicate):
+	def delete(self, predicate=None):
 		dt = self.get_dt()
 		dt.delete(predicate)
 

@@ -24,7 +24,7 @@ if __name__ == '__main__':
 				'animal':['tiger', 'fox', 'frog', 'cat']}
 
 		dt = db.KVDeltaTable("kvdb", index_dict['schema'])
-		#dt.create()
+		dt.create()
 		dt.insert(data)
 
 		time.sleep(0.1)
@@ -33,6 +33,8 @@ if __name__ == '__main__':
 		#df = dt.to_pandas(columns=['vector'], filters=[('id', 'in', [2,3]), ('animal', '=', 'apple')])
 
 		print(df.to_string())
+
+		dt.delete()
 		time.sleep(0.1)
 	except DeltaError as e:
 		print(e)
