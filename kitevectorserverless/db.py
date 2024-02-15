@@ -169,24 +169,42 @@ class KVDeltaTable(BaseVector):
 		self.schema = self.to_pyarrow_schema(schema)
 		self.dt = None
 		self.primary_col = self.primary_column(schema)
+		if self.primary_col == -1:
+			raise ValueError('primary id column not found')
+
 		self.vector_col = self.vector_column(schema)
+		if self.vector_col == -1:
+			raise ValueError('vector column not found')
 
 		print(self.primary_col)
 		print(self.vector_col)
 
 	def primary_column(self, schema_dict):
 		fields = schema_dict['fields']
+		idx = 0
 		for f in fields:
 			if f.get('is_primary', False):
-				return f
-		return None
+				return idx
+			idx += 1
+		return -1
 
 	def vector_column(self, schema_dict):
 		fields = schema_dict['fields']
+		idx = 0
 		for f in fields:
 			if f['type'] == 'vector':
-				return f
-		return None
+				return idx
+			idx += 1
+		return -1
+
+	def get_ids_vectors(self, data):
+		primary_cname = self.schema.names[self.primary_col]
+		primary_type = self.schema.types[self.primary_col]
+		vector_cname = self.schema.names[self.vector_col]
+		vector_type = self.schema.types[self.vector_col]
+
+		#return pa.array(data[primary_cname], primary_type).to_numpy(), pa.array(data[vector_cname], vector_type).to_numpy()
+		return data[primary_cname], np.float32(data[vector_cname])
 
 	def to_pyarrow_schema(self, schema_dict):
 		pafields = []
@@ -214,7 +232,7 @@ class KVDeltaTable(BaseVector):
 			else:
 				raise ValueError('unsupport data type {}'.format(f['type']))
 
-			pafields.append(pa.field(cname, dtype))
+			pafields.append(pa.field(cname, dtype, nullable=False))
 
 		return pa.schema(pafields)
 		

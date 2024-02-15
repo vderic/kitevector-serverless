@@ -1,3 +1,4 @@
+import shutil
 import os
 import json
 import numpy as np
@@ -51,9 +52,9 @@ class Index:
 	redis_host = None
 	role = None
 	db_uri = None
-	db_table = None
 	db_storage_options = None
 	user = None
+	index_cfg = None
 
 	indexes = {}
 	idxlocks = {}
@@ -69,6 +70,7 @@ class Index:
 		cls.redis_host = redis
 		cls.role = role
 		cls.user = user
+		cls.index_cfg = None
 
 		#cls.load(datadir)
 
@@ -138,7 +140,10 @@ class Index:
 	def get_index_meta(cls, cache, idxname):
 		user = os.environ.get('API_USER')
 		key = 'index:{}:{}'.format(user, idxname)
-		return cache.get(key)
+		jsonstr = cache.get(key)
+		if jsonstr is None:
+			return None
+		return json.loads(jsonstr)
 
 	@classmethod
 	def delete_index_meta(cls, cache, idxname):
@@ -170,8 +175,9 @@ class Index:
 
 			cls.save_index_meta(r, req)
 
-			cls.db_table = db.KVDeltaTable(cls.db_uri, req['schema'], cls.db_storage_options)
-			cls.db_table.create()
+			cls.index_cfg = req
+			db_table = db.KVDeltaTable(cls.db_uri, req['schema'], cls.db_storage_options)
+			db_table.create()
 
 			# save index to processing index so that we can keep track of the status
 			cls.indexes[idxkey] = p
@@ -179,9 +185,20 @@ class Index:
 	@classmethod
 	def insertData(cls, req):
 		# TODO: get namespace from request
-		idxkey = cls.get_indexkey(req['name'])
+		r = cls.get_redis()
+		idxmeta = cls.get_index_meta(r, cls.name)
+		if idxmeta is None:
+			raise ValueError('Index {} not found'.format(cls.name))
+
+		table = db.KVDeltaTable(cls.db_uri, idxmeta['schema'], cls.db_storage_options)
+		ids, vectors = table.get_ids_vectors(req)
+		idxkey = cls.get_indexkey(cls.name)
+		print(vectors)
+		print(ids)
 		with cls.get_lock(idxkey).gen_wlock():
-			pass
+			p = cls.indexes[idxkey]
+			p.add_items(vectors, ids)
+
 
 
 	@classmethod
@@ -204,6 +221,9 @@ class Index:
 			if os.path.exists(fpath):
 				os.remove(fpath)
 
+			if os.path.exists(cls.db_uri):
+				shutil.rmtree(cls.db_uri)
+
 			r = cls.get_redis()
 			cls.delete_index_meta(r, idxname)
 			
@@ -211,17 +231,13 @@ class Index:
 			cls.idxlocks.pop(idxkey)
 
 	@classmethod
-	def status(cls, req):
-		idxkey = cls.get_indexkey(req['name'])
+	def status(cls, idxname):
+		idxkey = cls.get_indexkey(idxname)
 		p = cls.indexes.get(idxkey)
 		if p is None:
-			p = cls.indexes.get(idxkey)
-			if p is None:
-				return {'status':'error', 'name': idxkey, 'message': 'index not found'}
+			return {'status':'error', 'name': idxkey, 'message': 'index not found'}
 
-			return {'status':'ok', 'name': idxkey, 'element_count': p.element_count, 'max_elements': p.max_elements}
-		
-		return {'status': 'processing', 'name': idxkey, 'element_count': p.element_count, 'max_elements': p.max_elements}
+		return {'status':'ok', 'name': idxkey, 'element_count': p.element_count, 'max_elements': p.max_elements}
 
 if __name__ == "__main__":
 

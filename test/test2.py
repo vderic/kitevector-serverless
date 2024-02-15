@@ -18,7 +18,7 @@ def global_init():
 	os.environ['INDEX_NAME'] = 'serverless'
 	os.environ['DATABASE_URI'] = 'vitesse/db'
 	os.environ['INDEX_HOME'] = 'vitesse/index'
-	os.environ['KV_ROLE'] = 'singleton'   # master, segment or singleton
+	os.environ['KV_ROLE'] = 'singleton'   # index-master, index-segment, query-master, query-segment or singleton
 
 	#CLOUD_RUN_TASK_INDEX and CLOUD_RUN_TASK_COUNT
 	os.environ['CLOUD_RUN_TASK_INDEX'] = '0'
@@ -38,7 +38,8 @@ def global_init():
 	user = os.environ.get('API_USER')
 
 	# global init index. If there is a index file indexdir/$fragid.hnsw found, load the index file into the memory
-	index.Index.init(index=index_name, fragid=fragid, index_uri=indexhome, db_uri=db_uri, storage_options=db_storage_options, redis=redis_host, role=role, user=user)
+	index.Index.init(index=index_name, fragid=fragid, index_uri=indexhome, db_uri=db_uri, 
+		storage_options=db_storage_options, redis=redis_host, role=role, user=user)
 	
 
 def gen_embedding(nitem):
@@ -68,7 +69,7 @@ if __name__ == '__main__':
 								},
 						'dimension': 1536,
 						'metric_type': 'ip',
-						'name': 'serverless-index',
+						'name': 'serverless',
 						'params' : { 'max_elements' : 1000, 'ef_construction' : 48, 'M' : 24}
 						}
 
@@ -82,13 +83,12 @@ if __name__ == '__main__':
 				'vector': vectors,
 				'animal':['tiger', 'fox', 'frog', 'cat']}
 
-		created = False
+		index.Index.create(index_dict)
+		index.Index.insertData(data)
 
-		if created:
-			index.Index.insertData(data)
-		else:
-			index.Index.create(index_dict)
-
+		status = index.Index.status(index_dict['name'])
+		print(status)
+		index.Index.delete(index_dict['name'])
 		#time.sleep(0.1)
 		#dt = db.KVDeltaTable(os.environ.get('DATABASE_HOME'), index_dict['schema'])
 		#df = dt.select(['vector', 'id']).filter(db.OpExpr('=', 'animal', 'fox')).filter(db.ScalarArrayOpExpr('id', [2,3])).execute()
