@@ -114,13 +114,13 @@ class Index:
 	@classmethod
 	def query(cls, req):	
 		idx = None
-		idxkey = cls.get_indexkey(req['name'])
+		idxkey = cls.get_indexkey(cls.name)
 		with cls.get_lock(idxkey).gen_rlock():
 			idx = cls.indexes[idxkey]
 
 			# found the index and get the nbest
-			embedding = np.float32(req['embedding'])
-			params = req['index_params']['params']
+			embedding = np.float32(req['vector'])
+			params = req['search_params']['params']
 			ef = params['ef']
 			k  = params['k']
 			num_threads = params['num_threads']

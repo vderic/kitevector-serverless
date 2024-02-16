@@ -63,6 +63,7 @@ if __name__ == '__main__':
 
 		random.seed(1000)
 
+		N = 10000
 		index_dict = {'schema': {'fields': [ {'name': 'id', 'is_primary': True, 'type': 'int64'},
 									{'name':'vector', 'type': 'vector'},
 									{'name':'animal', 'type': 'string'}]
@@ -70,24 +71,34 @@ if __name__ == '__main__':
 						'dimension': 1536,
 						'metric_type': 'ip',
 						'name': 'serverless',
-						'params' : { 'max_elements' : 1000, 'ef_construction' : 48, 'M' : 24}
+						'params' : { 'max_elements' : N, 'ef_construction' : 48, 'M' : 24}
 						}
 
 		vectors = []
-		for i in range(4):
+		for i in range(N):
 			vectors.append(gen_embedding(index_dict['dimension']))
 			
 		#print(vectors)
 
-		data = {'id':[1,2,3,4], 
+		data = {'id': range(N),
 				'vector': vectors,
-				'animal':['tiger', 'fox', 'frog', 'cat']}
+				'animal': [ 'str' + str(n) for n in range(N)]}
 
 		index.Index.create(index_dict)
 		index.Index.insertData(data)
 
 		status = index.Index.status(index_dict['name'])
 		print(status)
+
+
+		search_params = { 'vector': gen_embedding(index_dict['dimension']), 
+						'search_params': { 'params': { 'ef': 20, 'k': 5, 'num_threads':1}}}
+
+		ret_ids, ret_scores = index.Index.query(search_params)
+
+		print(ret_ids)
+		print(ret_scores)
+
 		index.Index.delete(index_dict['name'])
 		#time.sleep(0.1)
 		#dt = db.KVDeltaTable(os.environ.get('DATABASE_HOME'), index_dict['schema'])
