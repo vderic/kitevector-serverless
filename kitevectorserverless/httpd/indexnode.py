@@ -1,4 +1,5 @@
 import os
+import threading
 from werkzeug.exceptions import HTTPException, BadRequest
 from flask import Flask, request, json, abort, jsonify
 from kitevectorserverless.index import Index
@@ -43,6 +44,7 @@ app.register_error_handler(Exception, handle_exception)
 
 
 # global variable
+g_nslock = threading.Lock()
 g_namespaces = {}
 g_fragid = 0
 g_fragcnt = 0
@@ -53,6 +55,29 @@ g_index_name = None
 g_role = None
 g_redis_host = None
 g_user = None
+
+def set_index(idx, namespace):
+	ns = g_namespaces.get(namespace)
+	if ns is not None:
+		raise Exception('namespace {} already exist'.format(namespace))
+
+def get_index(namespace='default'):
+	return g_namespaces.get(namespace)
+
+def load_index():
+	# get index config and namespaces from Redis
+
+	# TODO: get list of namespaces here from Redis LRANGE, key = namespace:$user:$indexname, value = [ns1,ns2]
+	list_ns = ['default']
+
+	# load all namespaces index here
+	with g_nslock:
+		for ns in list_ns:
+			p = Index(name=g_index_name, fragid=g_fragid, index_uri=g_index_uri, db_uri=g_db_uri,
+				storage_options=g_db_storage_options, redis=g_redis_host, role=g_role, user=g_user, namespace=ns)
+			p.load(idxcfg)
+			set_index(p, ns)
+
 
 def global_init():
 
@@ -90,65 +115,78 @@ def global_init():
 	print(g_db_uri)
 
 	# global init index. If there is a index file indexdir/$fragid.hnsw found, load the index file into the memory
-	# load all namespaces index here
-	g_namespaces['default'] = Index(name=g_index_name, fragid=g_fragid, index_uri=g_index_uri, db_uri=g_db_uri,
-		storage_options=g_db_storage_options, redis=g_redis_host, role=g_role, user=g_user, namespace='default')
+	if g_role == 'singleton' or g_role == 'query-segment':
+		load_index()
 
 
 global_init()
 
 
-def get_namespace(namespace='default'):
-	ns = g_namespaces.get(namespace)
-	if ns is not None:
-		return ns
-	
-	g_namespaces[namespace] = Index(name=g_index_name, fragid=g_fragid, index_uri=g_index_uri, db_uri=g_db_uri,
-		storage_options=g_db_storage_options, redis=g_redis_host, role=g_role, user=g_user, namespace=namespace)
-
-	return g_namespaces[namespace]
-
-
 @app.route("/create", methods=['POST'])
 def create_index():
-	if request.is_json:
-		data = request.json
-		idx = get_namespace(namespace='default')
-		try:
-			idx.create(data)
-		except Exception as e:
-			abort(500, description = str(e))
-	else:
+	if not request.is_json:
 		abort(400, 'request is not in JSON format')
-	return data
 
-@app.route("/remove", methods=['GET'])
-def delete_index():
-	name = request.args.get('index')
-	if name is None:
-		abort(400, 'index is not found in request')
+	data = request.json
+	ns = 'default'
+	try:
+		with g_nslock:
+			# TODO: check index exist from Redis
+			idx = Index(name=g_index_name, fragid=g_fragid, index_uri=g_index_uri, db_uri=g_db_uri,
+				storage_options=g_db_storage_options, redis=g_redis_host, role=g_role, user=g_user, namespace=namespace)
+			idx.create(data)
+			set_index(idx, ns)
 
-	for ns, idx in g_namespaces.items():
-		idx.delete()
+	except Exception as e:
+		abort(500, description = str(e))
 
 	response = {'code': 200, 'message': 'ok'}
 	return jsonify(response)
 
-@app.route("/insert")
-def insert():
-	pass
+@app.route("/remove", methods=['GET'])
+def remove_index():
+	name = request.args.get('index')
+	if name is None:
+		abort(400, 'index is not found in request')
 
-@app.route("/update")
+	with g_nslock:
+		for ns, idx in g_namespaces.items():
+			idx.delete()
+
+	response = {'code': 200, 'message': 'ok'}
+	return jsonify(response)
+
+@app.route("/insert", methods=['POST'])
+def insert():
+	ns = 'default'
+	idx = None
+	with g_nslock:
+		idx = get_index(ns)
+		if idx is None:
+			# create a new namespace
+			pass
+	
+	# get index and do the insert here
+
+
+
+@app.route("/update", methods=['POST'])
 def update():
 	pass
 
-@app.route("/delete")
+@app.route("/delete", methods=['POST'])
 def delete():
 	pass
 
-@app.route("/status")
+@app.route("/status", methods=['GET'])
 def status():
-	pass
+	status = {}
+	for ns, idx in g_namespaces.items():
+		s = idx.status()
+		status[ns] = s
+
+	return jsonify(status)
+		
 
 def run():
 	app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)
