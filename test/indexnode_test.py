@@ -1,5 +1,4 @@
 import os
-#from kitevectorservless.httpd import indexnode
 
 def env_init():
 	os.environ['API_USER'] = 'vitesse'
@@ -19,7 +18,7 @@ def env_init():
 
 env_init()
 
-import indexnode
+from kitevectorserverless.httpd import indexnode
 
 def global_init():
 	indexnode.global_init()

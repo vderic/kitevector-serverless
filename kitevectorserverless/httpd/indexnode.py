@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, request
 from kitevectorserverless.index import Index
 
 app = Flask(__name__)
@@ -39,9 +39,10 @@ def global_init():
 
 global_init()
 
-@app.route("/create")
+@app.route("/create", methods=['POST'])
 def create():
-	pass
+	data = request.json
+	return data
 
 @app.route("/remove")
 def remove():

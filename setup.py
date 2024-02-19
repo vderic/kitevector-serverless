@@ -10,6 +10,6 @@ setup(
     license='Apache License 2.0',
     url='https://github.com/vderic/kitevector-serverless',
     description='Kite Vector Serverless',
-    packages=['kitevectorserverless'],
+    packages=['kitevectorserverless', 'kitevectorserverless.httpd'],
     py_modules=['kitevectorserverless'],
 )
