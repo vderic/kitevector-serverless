@@ -8,7 +8,11 @@ import math
 import random
 from deltalake import DeltaTable, write_deltalake
 from deltalake.exceptions import DeltaError, DeltaProtocolError, TableNotFoundError, CommitFailedError
-from kitevectorserverless import index,db
+from kitevectorserverless.index import Index
+from kitevectorserverless import db
+
+# namespace indexes
+g_indexes = {}
 
 def global_init():
 	os.environ['API_USER'] = 'vitesse'
@@ -38,8 +42,9 @@ def global_init():
 	user = os.environ.get('API_USER')
 
 	# global init index. If there is a index file indexdir/$fragid.hnsw found, load the index file into the memory
-	index.Index.init(index=index_name, fragid=fragid, index_uri=indexhome, db_uri=db_uri, 
-		storage_options=db_storage_options, redis=redis_host, role=role, user=user)
+	# load all namespaces index here
+	g_indexes['default'] = Index(name=index_name, fragid=fragid, index_uri=indexhome, db_uri=db_uri, 
+		storage_options=db_storage_options, redis=redis_host, role=role, user=user, namespace='default')
 	
 
 def gen_embedding(nitem):
@@ -64,6 +69,8 @@ if __name__ == '__main__':
 		random.seed(1000)
 
 		N = 10000
+		ns = 'default'
+
 		index_dict = {'schema': {'fields': [ {'name': 'id', 'is_primary': True, 'type': 'int64'},
 									{'name':'vector', 'type': 'vector'},
 									{'name':'animal', 'type': 'string'}]
@@ -84,22 +91,23 @@ if __name__ == '__main__':
 				'vector': vectors,
 				'animal': [ 'str' + str(n) for n in range(N)]}
 
-		index.Index.create(index_dict)
-		index.Index.insertData(data)
 
-		status = index.Index.status(index_dict['name'])
+		idx = g_indexes[ns]
+		idx.create(index_dict)
+		idx.insertData(data)
+		status = idx.status()
 		print(status)
 
 
 		search_params = { 'vector': gen_embedding(index_dict['dimension']), 
 						'search_params': { 'params': { 'ef': 20, 'k': 5, 'num_threads':1}}}
 
-		ret_ids, ret_scores = index.Index.query(search_params)
+		ret_ids, ret_scores = idx.query(search_params)
 
 		print(ret_ids)
 		print(ret_scores)
 
-		index.Index.delete(index_dict['name'])
+		idx.delete()
 		#time.sleep(0.1)
 		#dt = db.KVDeltaTable(os.environ.get('DATABASE_HOME'), index_dict['schema'])
 		#df = dt.select(['vector', 'id']).filter(db.OpExpr('=', 'animal', 'fox')).filter(db.ScalarArrayOpExpr('id', [2,3])).execute()

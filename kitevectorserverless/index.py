@@ -47,97 +47,60 @@ class IndexSort:
 # DATABASE_ENDPOINT
 class Index:
 
-	name = None
-	datadir = None
-	redis_host = None
-	role = None
-	db_uri = None
-	db_storage_options = None
-	user = None
-	index_cfg = None
+	def __init__(self, name, fragid, index_uri, db_uri, storage_options, redis, role, user, namespace='default'):
+		self.name = name
+		self.fragid = fragid
+		self.datadir = os.path.join(index_uri, name, namespace)
+		self.db_uri = os.path.join(db_uri, name, namespace)
+		self.db_storage_options = storage_options
+		self.redis_host = redis
+		self.role = role
+		self.user = user
+		self.index_cfg = None
+		self.lock = rwlock.RWLockFair()
+		self.index = None
+		self.namespace = namespace
 
-	indexes = {}
-	idxlocks = {}
-	fragid = 0
+		#self.load(datadir)
 
-	@classmethod
-	def init(cls, index, fragid, index_uri, db_uri, storage_options, redis, role, user):
-		cls.name = index
-		cls.fragid = fragid
-		cls.datadir = os.path.join(index_uri, index)
-		cls.db_uri = os.path.join(db_uri, index)
-		cls.db_storage_options = storage_options
-		cls.redis_host = redis
-		cls.role = role
-		cls.user = user
-		cls.index_cfg = None
-
-		#cls.load(datadir)
-
-	@classmethod
-	def get_indexkey(cls, idxname, namespace=''):
-		return '{}#{}#{}'.format(idxname, namespace, cls.fragid)
-
-	@classmethod
-	def index_exists(cls, req):
-		key = cls.get_indexkey(req['name'])
-		return cls.indexes.get(key) is not None
-
-	@classmethod
-	def get_lock(cls, idxname):
-		lock = cls.idxlocks.get(idxname)
-		if lock == None:
-			lock = rwlock.RWLockFair()
-			cls.idxlocks[idxname] = lock
-		return lock
-
-	@classmethod
-	def get_redis(cls):
-		r = redis.Redis(host=os.environ.get('REDIS_HOST', 'localhost'))
+	def get_redis(self):
+		r = redis.Redis(host= self.redis_host)
 		return r
 
-	@classmethod
-	def load(cls, datadir):
+	def load(self, datadir):
 		if not os.path.isdir(datadir):
 			raise Exception("data directory not exists")
 		
-		flist = glob.glob('*.hnsw', root_dir = cls.datadir)
+		flist = glob.glob('*.hnsw', root_dir = self.datadir)
 		for f in flist:
 			idxname = os.path.splitext(os.path.basename(f))[0]
-			fpath = os.path.join(cls.datadir, f)
-			with cls.get_lock(idxname):
+			fpath = os.path.join(self.datadir, f)
+			with self.lock.gen_wlock():
 				# load the index inside the lock
 				with open(fpath, 'rb') as fp:
 					idx = pickle.load(fp)
-					cls.indexes[idxname] = idx
+					self.indexes[idxname] = idx
 
-	@classmethod
-	def query(cls, req):	
-		idx = None
-		idxkey = cls.get_indexkey(cls.name)
-		with cls.get_lock(idxkey).gen_rlock():
-			idx = cls.indexes[idxkey]
-
+	def query(self, req):	
+		with self.lock.gen_rlock():
 			# found the index and get the nbest
 			embedding = np.float32(req['vector'])
 			params = req['search_params']['params']
 			ef = params['ef']
 			k  = params['k']
 			num_threads = params['num_threads']
-			idx.set_ef(ef)
-			idx.set_num_threads(num_threads)
-			ids, distances = idx.knn_query(embedding, k=k)
+			self.index.set_ef(ef)
+			self.index.set_num_threads(num_threads)
+			ids, distances = self.index.knn_query(embedding, k=k)
 			return ids, distances
 
-	@classmethod
-	def save_index_meta(cls, cache, req):
+	def save_index_meta(self, cache, req):
 		user = os.environ.get('API_USER')
 		key = 'index:{}:{}'.format(user, req['name'])
 		value = json.dumps(req)
 		cache.set(key, value)
 
-	@classmethod
-	def get_index_meta(cls, cache, idxname):
+	def get_index_meta(self, cache, idxname):
 		user = os.environ.get('API_USER')
 		key = 'index:{}:{}'.format(user, idxname)
 		jsonstr = cache.get(key)
@@ -145,16 +108,13 @@ class Index:
 			return None
 		return json.loads(jsonstr)
 
-	@classmethod
-	def delete_index_meta(cls, cache, idxname):
+	def delete_index_meta(self, cache, idxname):
 		user = os.environ.get('API_USER')
 		key = 'index:{}:{}'.format(user, idxname)
 		return cache.delete(key)
 		
-	@classmethod
-	def create(cls, req):
-		idxkey = cls.get_indexkey(req['name'])
-		with cls.get_lock(idxkey).gen_wlock():
+	def create(self, req):
+		with self.lock.gen_wlock():
 			# create index inside the lock
 			space = req['metric_type']
 			dim = req['dimension']
@@ -168,105 +128,57 @@ class Index:
 			#p.set_num_threads(num_threads)
 
 			# TODO: save the index metadata to database and redis
-			r = cls.get_redis()
-			idxcfg = cls.get_index_meta(r, req['name'])
+			r = self.get_redis()
+			idxcfg = self.get_index_meta(r, req['name'])
 			if idxcfg is not None:
 				raise ValueError('Index {} already exists'.format(req['name']))
 
-			cls.save_index_meta(r, req)
+			self.save_index_meta(r, req)
 
-			cls.index_cfg = req
-			db_table = db.KVDeltaTable(cls.db_uri, req['schema'], cls.db_storage_options)
+			self.index_cfg = req
+			db_table = db.KVDeltaTable(self.db_uri, req['schema'], self.db_storage_options)
 			db_table.create()
 
 			# save index to processing index so that we can keep track of the status
-			cls.indexes[idxkey] = p
+			self.index = p
 
-	@classmethod
-	def insertData(cls, req):
+	def insertData(self, req):
 		# TODO: get namespace from request
-		r = cls.get_redis()
-		idxmeta = cls.get_index_meta(r, cls.name)
+		r = self.get_redis()
+		idxmeta = self.get_index_meta(r, self.name)
 		if idxmeta is None:
-			raise ValueError('Index {} not found'.format(cls.name))
+			raise ValueError('Index {} not found'.format(self.name))
 
-		table = db.KVDeltaTable(cls.db_uri, idxmeta['schema'], cls.db_storage_options)
+		table = db.KVDeltaTable(self.db_uri, idxmeta['schema'], self.db_storage_options)
 		ids, vectors = table.get_ids_vectors(req)
-		idxkey = cls.get_indexkey(cls.name)
 		print(vectors)
 		print(ids)
-		with cls.get_lock(idxkey).gen_wlock():
-			p = cls.indexes[idxkey]
-			p.add_items(vectors, ids)
+		with self.lock.gen_wlock():
+			# TODO: check index full
+			self.index.add_items(vectors, ids)
 
-
-
-	@classmethod
-	def updateData(cls, req):
-		idxkey = cls.get_indexkey(req['name'])
-		with cls.get_lock(idxkey).gen_wlock():
+	def updateData(self, req):
+		with self.lock.gen_wlock():
 			pass
 
-	@classmethod
-	def deleteData(cls, req):
-		idxkey = cls.get_indexkey(req['name'])
-		with cls.get_lock(idxkey).gen_wlock():
+	def deleteData(self, req):
+		with self.lock.gen_wlock():
 			pass
 
-	@classmethod
-	def delete(cls, idxname):
-		idxkey = cls.get_indexkey(idxname)
-		with cls.get_lock(idxkey).gen_wlock():
-			fpath = os.path.join(cls.datadir, '{}.hnsw'.format(idxkey))
+	def delete(self):
+		with self.lock.gen_wlock():
+			fpath = os.path.join(self.datadir, '{}.hnsw'.format(self.fragid))
 			if os.path.exists(fpath):
 				os.remove(fpath)
 
-			if os.path.exists(cls.db_uri):
-				shutil.rmtree(cls.db_uri)
+			if os.path.exists(self.db_uri):
+				shutil.rmtree(self.db_uri)
 
-			r = cls.get_redis()
-			cls.delete_index_meta(r, idxname)
-			
-			cls.indexes.pop(idxkey)
-			cls.idxlocks.pop(idxkey)
+			r = self.get_redis()
+			self.delete_index_meta(r, self.name)
 
-	@classmethod
-	def status(cls, idxname):
-		idxkey = cls.get_indexkey(idxname)
-		p = cls.indexes.get(idxkey)
-		if p is None:
-			return {'status':'error', 'name': idxkey, 'message': 'index not found'}
+	def status(self):
+		if self.index is None:
+			return {'status':'error', 'name': self.name, 'message': 'index not found'}
 
-		return {'status':'ok', 'name': idxkey, 'element_count': p.element_count, 'max_elements': p.max_elements}
-
-if __name__ == "__main__":
-
-	os.environ['API_USER'] = 'vitesse'
-	os.environ['REDIS_HOST'] = 'localhost'
-	os.environ['DATABASE_HOME'] = 'deltalake'
-	os.environ['INDEX_HOME'] = 'index'
-	os.environ['KV_ROLE'] = 'single'   # master, segment or single
-
-	#CLOUD_RUN_TASK_INDEX and CLOUD_RUN_TASK_COUNT
-	os.environ['CLOUD_RUN_TASK_INDEX'] = '0'
-	os.environ['CLOUD_RUN_TASK_COUNT'] = '1'
-
-	fragid = int(os.environ.get('CLOUD_RUN_TASK_INDEX'))
-	fragcnt = int(os.environ.get('CLOUD_RUN_TASK_COUNT'))
-
-	req = { 'name': 'movie', 
-			'metric_type' : 'ip',
-			'dimension' : 4,
-			'params' : { 'max_elements' : 1000, 'ef_construction' : 48, 'M' : 24}
-		}
-
-	indexdir = os.environ.get('INDEX_HOME')
-	datadir = os.environ.get('DATABASE_HOME')
-	
-	# global init here
-	Index.init(fragid, indexdir)
-	
-	# REST API
-	Index.create(req)
-	
-	Index.delete(req['name'])
+		return {'status':'ok', 'name': self.name, 'element_count': self.index.element_count, 'max_elements': self.index.max_elements}
