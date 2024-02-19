@@ -27,6 +27,5 @@ global_init()
 
 if __name__ == "__main__":
 
-
 	indexnode.run()
 	
