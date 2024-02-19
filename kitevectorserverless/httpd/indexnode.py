@@ -61,10 +61,27 @@ def global_init():
 
 	g_index_uri = os.environ.get('INDEX_URI')
 	g_db_uri = os.environ.get('DATABASE_URI')
+	g_db_storage_options = None
+
+	if g_index_uri.startswith("s3://") or g_index_uri.startswith("s3a://"):
+		aws_id = os.environ['AWS_ACCESS_KEY_ID']
+		aws_key = os.environ['AWS_SECRET_ACCESS_KEY']
+		aws_region = os.environ['AWS_REGION']
+		aws_lock_provider = os.environ['AWS_S3_LOCKING_PROVIDER']
+		aws_lock_table = os.environ['DELTA_DYNAMO_TABLE_NAME']
+		g_db_storage_options = {'AWS_ACCESS_KEY_ID': aws_id,
+								'AWS_SECRET_ACCESS_KEY': aws_key,
+								'AWS_REGION': aws_region,
+								'AWS_S3_LOCKING_PROVIDER': aws_lock_provider,
+								'DELTA_DYNAMO_TABLE_NAME': aws_lock_table}
+	elif g_index_uri.startswith("gs://"):
+		gs_account = os.environ['GOOGLE_SERVICE_ACCOUNT']
+		gs_key = os.environ['GOOGLE_SERVICE_ACCOUNT_KEY']
+		g_db_storage_options = {'GOOGLE_SERVICE_ACCOUNT': gs_account,
+								'GOOGLE_SERVICE_ACCOUNT_KEY': gs_key}
 
 	# should be initialize here
 	g_index_name = os.environ.get('INDEX_NAME')
-	g_db_storage_options = None
 	g_role = os.environ.get('KV_ROLE')
 	g_redis_host = os.environ.get('REDIS_HOST')
 	g_user = os.environ.get('API_USER')
