@@ -79,6 +79,9 @@ def load_all_namespaces():
 			p.load(idxcfg)
 			set_index(p, ns)
 
+def create_all_namespaces():
+	pass
+
 def global_init():
 
 	g_fragid = int(os.environ.get('CLOUD_RUN_TASK_INDEX'))
@@ -115,8 +118,10 @@ def global_init():
 	print(g_db_uri)
 
 	# global init index. If there is a index file indexdir/$fragid.hnsw found, load the index file into the memory
-	if g_role == 'singleton' or g_role == 'query-segment' or g_role == 'index-segment':
+	if g_role == 'singleton' or g_role == 'query-segment':
 		load_all_namespaces()
+	elif g_role == 'index-segment':
+		create_all_namespaces()
 
 
 global_init()
