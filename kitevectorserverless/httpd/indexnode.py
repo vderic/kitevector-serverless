@@ -61,6 +61,7 @@ def set_index(idx, namespace):
 	ns = g_namespaces.get(namespace)
 	if ns is not None:
 		raise Exception('namespace {} already exist'.format(namespace))
+	g_namespaces[namespace] = idx
 
 def get_index(namespace='default'):
 	return g_namespaces.get(namespace)
