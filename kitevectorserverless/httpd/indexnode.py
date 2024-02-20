@@ -29,8 +29,8 @@ def handle_exception(e):
 	if isinstance(e, HTTPException):
 		return e
 
-	response = {"code": e.code, "message": str(e)}
-	return jsonify(response), e.code
+	response = {"code": 500, "message": str(e)}
+	return jsonify(response), 500
 
 app.register_error_handler(400, handler_bad_request)
 app.register_error_handler(404, page_not_found)

@@ -144,6 +144,8 @@ class Index:
 		ids, vectors = table.get_ids_vectors(req)
 		with self.lock.gen_wlock():
 			# TODO: check index full
+			if self.index.element_count + len(ids) > self.index.max_elements:
+				raise Exception('index is full')
 			self.index.add_items(vectors, ids)
 			table.insert(req)
 

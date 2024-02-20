@@ -3,6 +3,7 @@ import random
 import math
 import json
 import sys
+from datetime import datetime
 
 
 def gen_embedding(nitem):
@@ -21,7 +22,7 @@ def gen_embedding(nitem):
 
 if __name__ == '__main__':
 	
-	random.seed(1000)
+	random.seed(datetime.now().timestamp())
 
 	JSON={"name":"serverless",
 		"dimension" : 1536,
@@ -38,7 +39,7 @@ if __name__ == '__main__':
 
 	vectors = [ gen_embedding(dim) for i in range(N)]
 
-	data = {'id': list(range(N)),
+	data = {'id': [ random.randint(1, 10000) for i in range(N)],
 			'vector': vectors,
 			'animal': [ 'str' + str(n) for n in range(N)]}
 
