@@ -47,16 +47,15 @@ class IndexSort:
 # DATABASE_ENDPOINT
 class Index:
 
-	def __init__(self, name, fragid, index_uri, db_uri, storage_options, redis, role, user, namespace='default'):
-		self.name = name
+	def __init__(self, config, fragid, index_uri, db_uri, storage_options, redis, role, user, namespace='default'):
+		self.config = config
 		self.fragid = fragid
-		self.datadir = os.path.join(index_uri, name, namespace)
-		self.db_uri = os.path.join(db_uri, name, namespace)
+		self.datadir = os.path.join(index_uri, config['name'], namespace)
+		self.db_uri = os.path.join(db_uri, config['name'], namespace)
 		self.db_storage_options = storage_options
 		self.redis_host = redis
 		self.role = role
 		self.user = user
-		self.index_cfg = None
 		self.lock = rwlock.RWLockFair()
 		self.index = None
 		self.namespace = namespace
@@ -113,8 +112,9 @@ class Index:
 		key = 'index:{}:{}'.format(user, idxname)
 		return cache.delete(key)
 		
-	def create(self, req):
+	def create(self):
 		with self.lock.gen_wlock():
+			req = self.config
 			# create index inside the lock
 			space = req['metric_type']
 			dim = req['dimension']
@@ -127,15 +127,6 @@ class Index:
 			p.init_index(max_elements=max_elements, ef_construction=ef_construction, M=M)
 			#p.set_num_threads(num_threads)
 
-			# TODO: save the index metadata to database and redis
-			r = self.get_redis()
-			idxcfg = self.get_index_meta(r, req['name'])
-			if idxcfg is not None:
-				raise ValueError('Index {} already exists'.format(req['name']))
-
-			self.save_index_meta(r, req)
-
-			self.index_cfg = req
 			db_table = db.KVDeltaTable(self.db_uri, req['schema'], self.db_storage_options)
 			db_table.create()
 
@@ -144,12 +135,7 @@ class Index:
 
 	def insertData(self, req):
 		# TODO: get namespace from request
-		r = self.get_redis()
-		idxmeta = self.get_index_meta(r, self.name)
-		if idxmeta is None:
-			raise ValueError('Index {} not found'.format(self.name))
-
-		table = db.KVDeltaTable(self.db_uri, idxmeta['schema'], self.db_storage_options)
+		table = db.KVDeltaTable(self.db_uri, self.config['schema'], self.db_storage_options)
 		ids, vectors = table.get_ids_vectors(req)
 		print(vectors)
 		print(ids)
@@ -174,11 +160,8 @@ class Index:
 			if os.path.exists(self.db_uri):
 				shutil.rmtree(self.db_uri)
 
-			r = self.get_redis()
-			self.delete_index_meta(r, self.name)
-
 	def status(self):
 		if self.index is None:
-			return {'status':'error', 'name': self.name, 'message': 'index not found'}
+			return {'status':'error', 'message': 'index not found'}
 
-		return {'status':'ok', 'name': self.name, 'element_count': self.index.element_count, 'max_elements': self.index.max_elements}
+		return {'status':'ok', 'element_count': self.index.element_count, 'max_elements': self.index.max_elements}

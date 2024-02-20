@@ -1,4 +1,5 @@
 import os
+import json
 import time
 import sys
 import heapq
@@ -13,8 +14,21 @@ from kitevectorserverless import db
 
 # namespace indexes
 g_indexes = {}
+fragid = 0
+fragcnt = 0
+indexhome = None
+db_uri = None
+db_storage_options = None
+role = None
+redist_host = None
+user = None
+idxcfg = None
+
 
 def global_init():
+
+	global idxcfg, g_indexes, fragid, fragcnt, indexhome, db_uri, db_storage_options, role, redist_host
+
 	os.environ['API_USER'] = 'vitesse'
 	os.environ['REDIS_HOST'] = 'localhost'
 
@@ -28,6 +42,17 @@ def global_init():
 	os.environ['CLOUD_RUN_TASK_INDEX'] = '0'
 	os.environ['CLOUD_RUN_TASK_COUNT'] = '1'
 
+	# JSON
+	os.environ['INDEX_JSON']='''{"name":"serverless",
+	"dimension" : 1536,
+	"metric_type" : "ip",
+	"schema": { "fields" : [{"name": "id", "type":"int64", "is_primary": "true"},
+		{"name":"vector", "type":"vector"},
+		{"name":"animal", "type":"string"}
+		]},
+	"params": {"max_elements" : 1000, "ef_construction":48, "M": 24}
+	}'''
+
 	fragid = int(os.environ.get('CLOUD_RUN_TASK_INDEX'))
 	fragcnt = int(os.environ.get('CLOUD_RUN_TASK_COUNT'))
 
@@ -35,15 +60,22 @@ def global_init():
 	db_uri = os.environ.get('DATABASE_URI')
 
 	# should be initialize here 
-	index_name = os.environ.get('INDEX_NAME')
 	db_storage_options = None
 	role = os.environ.get('KV_ROLE')
 	redis_host = os.environ.get('REDIS_HOST')
 	user = os.environ.get('API_USER')
 
+
+	idxcfg = json.loads(os.environ.get('INDEX_JSON'))
+
+	print(idxcfg)
+	params = idxcfg['params']
+	N = params['max_elements']
+	print(N)
+
 	# global init index. If there is a index file indexdir/$fragid.hnsw found, load the index file into the memory
 	# load all namespaces index here
-	g_indexes['default'] = Index(name=index_name, fragid=fragid, index_uri=indexhome, db_uri=db_uri, 
+	g_indexes['default'] = Index(config=idxcfg, fragid=fragid, index_uri=indexhome, db_uri=db_uri, 
 		storage_options=db_storage_options, redis=redis_host, role=role, user=user, namespace='default')
 	
 
@@ -68,22 +100,14 @@ if __name__ == '__main__':
 
 		random.seed(1000)
 
-		N = 10000
+		params = idxcfg['params']
+		N = params['max_elements']
+		dim = idxcfg['dimension']
 		ns = 'default'
-
-		index_dict = {'schema': {'fields': [ {'name': 'id', 'is_primary': True, 'type': 'int64'},
-									{'name':'vector', 'type': 'vector'},
-									{'name':'animal', 'type': 'string'}]
-								},
-						'dimension': 1536,
-						'metric_type': 'ip',
-						'name': 'serverless',
-						'params' : { 'max_elements' : N, 'ef_construction' : 48, 'M' : 24}
-						}
 
 		vectors = []
 		for i in range(N):
-			vectors.append(gen_embedding(index_dict['dimension']))
+			vectors.append(gen_embedding(dim))
 			
 		#print(vectors)
 
@@ -93,13 +117,13 @@ if __name__ == '__main__':
 
 
 		idx = g_indexes[ns]
-		idx.create(index_dict)
+		idx.create()
 		idx.insertData(data)
 		status = idx.status()
 		print(status)
 
 
-		search_params = { 'vector': gen_embedding(index_dict['dimension']), 
+		search_params = { 'vector': gen_embedding(dim), 
 						'search_params': { 'params': { 'ef': 20, 'k': 5, 'num_threads':1}}}
 
 		ret_ids, ret_scores = idx.query(search_params)

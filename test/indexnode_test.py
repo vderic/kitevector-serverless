@@ -37,6 +37,18 @@ def env_init():
 
 	os.environ['PORT'] = '8080'
 
+	# JSON
+	os.environ['INDEX_JSON']='''{"name":"serverless",
+	"dimension" : 1536,
+	"metric_type" : "ip",
+	"schema": { "fields" : [{"name": "id", "type":"int64", "is_primary": "true"},
+		{"name":"vector", "type":"vector"},
+		{"name":"animal", "type":"string"}
+		]},
+	"params": {"max_elements" : 1000, "ef_construction":48, "M": 24}
+	}'''
+
+
 env_init()
 
 from kitevectorserverless.httpd import indexnode
