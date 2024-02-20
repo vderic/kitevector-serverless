@@ -142,11 +142,10 @@ class Index:
 		# TODO: get namespace from request
 		table = db.KVDeltaTable(self.db_uri, self.config['schema'], self.db_storage_options)
 		ids, vectors = table.get_ids_vectors(req)
-		print(vectors)
-		print(ids)
 		with self.lock.gen_wlock():
 			# TODO: check index full
 			self.index.add_items(vectors, ids)
+			table.insert(req)
 
 	def updateData(self, req):
 		with self.lock.gen_wlock():

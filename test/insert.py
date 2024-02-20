@@ -33,7 +33,7 @@ if __name__ == '__main__':
 		"params": {"max_elements" : 1000, "ef_construction":48, "M": 24}
 		}
 
-	N=1000
+	N=100
 	dim = 1536
 
 	vectors = [ gen_embedding(dim) for i in range(N)]

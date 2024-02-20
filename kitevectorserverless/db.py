@@ -232,7 +232,7 @@ class KVDeltaTable(BaseVector):
 			else:
 				raise ValueError('unsupport data type {}'.format(f['type']))
 
-			pafields.append(pa.field(cname, dtype, nullable=False))
+			pafields.append(pa.field(cname, dtype))
 
 		return pa.schema(pafields)
 		

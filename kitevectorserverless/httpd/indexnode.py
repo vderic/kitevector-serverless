@@ -26,17 +26,11 @@ def internal_server_error(e):
 @app.errorhandler(Exception)
 def handle_exception(e):
 	# pass through HTTP errors
-	if instance(e, HTTPException):
+	if isinstance(e, HTTPException):
 		return e
 
-	response = e.get_response()
-	response.data = json.dumps({
-		"code": e.code,
-		"name": e.name,
-		"message": e.description,
-	})
-	response.content_type = "application/json"
-	return response, e.code
+	response = {"code": e.code, "message": str(e)}
+	return jsonify(response), e.code
 
 app.register_error_handler(400, handler_bad_request)
 app.register_error_handler(404, page_not_found)
