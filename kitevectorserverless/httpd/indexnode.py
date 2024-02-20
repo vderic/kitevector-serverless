@@ -176,15 +176,29 @@ def remove_index():
 
 @app.route("/insert", methods=['POST'])
 def insert():
-	ns = 'default'
+	if not request.is_json:
+		abort(400, 'request is not in JSON format')
+	
+	data = request.json
+
+	ns = data.get('namespace')
+	if ns is None:
+		ns = 'default'
+
 	idx = None
 	with g_nslock:
 		idx = get_index(ns)
 		if idx is None:
 			# create a new namespace
-			pass
+			idx = Index(config=g_index_config, fragid=g_fragid, index_uri=g_index_uri, db_uri=g_db_uri,
+				storage_options=g_db_storage_options, redis=g_redis_host, role=g_role, user=g_user, namespace=ns)
+			idx.create()
+			set_index(idx, ns)
 	
 	# get index and do the insert here
+	idx.insertData(data)
+	response = {'code': 200, 'message': 'ok'}
+	return jsonify(response)
 
 
 
