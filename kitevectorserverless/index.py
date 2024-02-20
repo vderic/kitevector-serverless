@@ -66,20 +66,20 @@ class Index:
 		r = redis.Redis(host= self.redis_host)
 		return r
 
-	def load(self, datadir):
-		if not os.path.isdir(datadir):
+	def load(self):
+		if not os.path.isdir(self.datadir):
 			raise Exception("data directory not exists")
 		
-		flist = glob.glob('*.hnsw', root_dir = self.datadir)
-		for f in flist:
-			idxname = os.path.splitext(os.path.basename(f))[0]
-			fpath = os.path.join(self.datadir, f)
-			with self.lock.gen_wlock():
-				# load the index inside the lock
-				with open(fpath, 'rb') as fp:
-					idx = pickle.load(fp)
-					self.indexes[idxname] = idx
+		fpath = os.path.join(self.datadir, '{}.hnsw'.format(str(self.fragid)))
+		if not os.path.exists(fname):
+			return False
 
+		with self.lock.gen_wlock:
+			with open(fpath, 'rb') as fp:
+				self.index = pickle.load(fp)
+
+		return True
+				
 	def query(self, req):	
 		with self.lock.gen_rlock():
 			# found the index and get the nbest
@@ -127,8 +127,13 @@ class Index:
 			p.init_index(max_elements=max_elements, ef_construction=ef_construction, M=M)
 			#p.set_num_threads(num_threads)
 
-			db_table = db.KVDeltaTable(self.db_uri, req['schema'], self.db_storage_options)
-			db_table.create()
+			if self.role == 'singleton' or self.role == 'index-master':
+				db_table = db.KVDeltaTable(self.db_uri, req['schema'], self.db_storage_options)
+				db_table.create()
+			elif self.role == 'index-segment':
+				# check the db_uri exists
+				db_table = db.KVDeltaTable(self.db_uri, req['schema'], self.db_storage_options)
+				db_table.get_dt()
 
 			# save index to processing index so that we can keep track of the status
 			self.index = p

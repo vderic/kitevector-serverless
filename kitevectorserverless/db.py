@@ -255,6 +255,7 @@ class KVDeltaTable(BaseVector):
 
 	def create(self):
 		self.dt = DeltaTable.create(self.table_uri, schema=self.schema, storage_options=self.storage_options, mode='error')
+		#self.dt = DeltaTable.create(self.table_uri, schema=self.schema, storage_options=self.storage_options, mode='overwrite')
 
 	def to_pandas(self, columns=None, filters=None):
 		dt = self.get_dt()

@@ -1,3 +1,4 @@
+import json
 import os
 import threading
 from werkzeug.exceptions import HTTPException, BadRequest
@@ -51,7 +52,7 @@ g_fragcnt = 0
 g_index_uri = None
 g_db_uri = None
 g_db_storage_options = None
-g_index_name = None
+g_index_config = None
 g_role = None
 g_redis_host = None
 g_user = None
@@ -65,7 +66,6 @@ def get_index(namespace='default'):
 	return g_namespaces.get(namespace)
 
 def load_all_namespaces():
-	# get index config and namespaces from Redis
 
 	# TODO: get list of namespaces here from Redis LRANGE, key = namespace:$user:$indexname, value = [ns1,ns2]
 	list_ns = ['default']
@@ -73,16 +73,17 @@ def load_all_namespaces():
 	# load all namespaces index here
 	with g_nslock:
 		for ns in list_ns:
-			p = Index(name=g_index_name, fragid=g_fragid, index_uri=g_index_uri, db_uri=g_db_uri,
+			p = Index(config=g_index_config, fragid=g_fragid, index_uri=g_index_uri, db_uri=g_db_uri,
 				storage_options=g_db_storage_options, redis=g_redis_host, role=g_role, user=g_user, namespace=ns)
-			# TODO: load or create
-			p.load(idxcfg)
+			p.create()
 			set_index(p, ns)
 
 def create_all_namespaces():
 	pass
 
 def global_init():
+
+	global g_namespaces, g_fragid, g_fragcnt, g_index_uri, g_db_uri, g_db_storage_options, g_index_config, g_role, g_redis_host, g_user
 
 	g_fragid = int(os.environ.get('CLOUD_RUN_TASK_INDEX'))
 	g_fragcnt = int(os.environ.get('CLOUD_RUN_TASK_COUNT'))
@@ -109,7 +110,7 @@ def global_init():
 								'GOOGLE_SERVICE_ACCOUNT_KEY': gs_key}
 
 	# should be initialize here
-	g_index_name = os.environ.get('INDEX_NAME')
+	g_index_config = json.loads(os.environ.get('INDEX_JSON'))
 	g_role = os.environ.get('KV_ROLE')
 	g_redis_host = os.environ.get('REDIS_HOST')
 	g_user = os.environ.get('API_USER')
@@ -118,10 +119,10 @@ def global_init():
 	print(g_db_uri)
 
 	# global init index. If there is a index file indexdir/$fragid.hnsw found, load the index file into the memory
-	if g_role == 'singleton' or g_role == 'query-segment':
-		load_all_namespaces()
-	elif g_role == 'index-segment':
-		create_all_namespaces()
+	#if g_role == 'singleton' or g_role == 'query-segment':
+	#	load_all_namespaces()
+	#elif g_role == 'index-segment':
+	#	create_all_namespaces()
 
 
 global_init()
@@ -135,12 +136,23 @@ def create_index():
 	data = request.json
 	ns = 'default'
 	try:
-		with g_nslock:
-			# TODO: check index exist from Redis
-			idx = Index(name=g_index_name, fragid=g_fragid, index_uri=g_index_uri, db_uri=g_db_uri,
-				storage_options=g_db_storage_options, redis=g_redis_host, role=g_role, user=g_user, namespace=namespace)
-			idx.create(data)
-			set_index(idx, ns)
+		if g_role == 'singleton':
+			with g_nslock:
+				idx = Index(config=g_index_config, fragid=g_fragid, index_uri=g_index_uri, db_uri=g_db_uri,
+					storage_options=g_db_storage_options, redis=g_redis_host, role=g_role, user=g_user, namespace=ns)
+				idx.create()
+				set_index(idx, ns)
+
+		elif g_role == 'index-master':
+			# create index-segment and invoke /create on index-segment
+			pass
+		elif g_role == 'index-segment':
+			with g_nslock:
+				idx = Index(config=g_index_config, fragid=g_fragid, index_uri=g_index_uri, db_uri=g_db_uri,
+					storage_options=g_db_storage_options, redis=g_redis_host, role=g_role, user=g_user, namespace=ns)
+				idx.create()
+				set_index(idx, ns)
+
 
 	except Exception as e:
 		abort(500, description = str(e))
