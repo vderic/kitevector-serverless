@@ -99,10 +99,15 @@ def global_init():
 								'AWS_S3_LOCKING_PROVIDER': aws_lock_provider,
 								'DELTA_DYNAMO_TABLE_NAME': aws_lock_table}
 	elif g_index_uri.startswith("gs://"):
-		gs_account = os.environ['GOOGLE_SERVICE_ACCOUNT']
-		gs_key = os.environ['GOOGLE_SERVICE_ACCOUNT_KEY']
-		g_db_storage_options = {'GOOGLE_SERVICE_ACCOUNT': gs_account,
-								'GOOGLE_SERVICE_ACCOUNT_KEY': gs_key}
+		gs_secret = os.environ['GOOGLE_APPLICATION_CREDENTIALS_JSON']
+		fpath = os.path.join(os.environ.get('HOME'), '.google.json')
+		if not os.path.exists(fpath):
+			with open(fpath, 'w') as f:
+				f.write(gs_secret)
+
+		os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = fpath
+		g_db_storage_options = {'GOOGLE_SERVICE_ACCOUNT': fpath,
+								'GOOGLE_APPLICATION_CREDENTIALS': fpath}
 
 	# should be initialize here
 	g_index_config = json.loads(os.environ.get('INDEX_JSON'))

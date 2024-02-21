@@ -6,9 +6,8 @@ def env_init():
 
 	# the path are generated from index name of the CREATE INDEX, 
 	# i.e. gs://bucket/db/$index_name/$namespace and gs://bucket/index/$index_name/$namespace
-	os.environ['INDEX_NAME'] = 'serverless'
-	os.environ['DATABASE_URI'] = 'vitesse/db'
-	os.environ['INDEX_URI'] = 'vitesse/index'
+	os.environ['DATABASE_URI'] = 'gs://vitesse_deltalake/db'
+	os.environ['INDEX_URI'] = 'gs://vitesse_deltalake/index'
 	os.environ['KV_ROLE'] = 'singleton'   # index-master, index-segment, query-master, query-segment or singleton
 
 	#CLOUD_RUN_TASK_INDEX and CLOUD_RUN_TASK_COUNT
@@ -36,7 +35,7 @@ def env_init():
 
 	with open(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')) as f:
 		gcp_secret = f.read()
-		os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = gcp_secret
+		os.environ['GOOGLE_APPLICATION_CREDENTIALS_JSON'] = gcp_secret
 
 	os.environ['PORT'] = '8080'
 
