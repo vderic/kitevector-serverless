@@ -171,3 +171,4 @@ class Index:
 			return {'status':'error', 'message': 'index not found'}
 
 		return {'status':'ok', 'element_count': self.index.element_count, 'max_elements': self.index.max_elements}
+

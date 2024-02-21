@@ -34,6 +34,9 @@ def env_init():
 	os.environ['GOOGLE_SERVICE_ACCOUNT_KEY'] = 'key'
 	os.environ['GOOGLE_BUCKET'] = 'bucket'
 
+	with open(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')) as f:
+		gcp_secret = f.read()
+		os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = gcp_secret
 
 	os.environ['PORT'] = '8080'
 
