@@ -9,6 +9,7 @@ from kitevectorserverless.index import Index
 # Flask initialization
 app = Flask(__name__)
 
+
 @app.errorhandler(BadRequest)
 def handler_bad_request(e):
 	response = {'code': 400, 'message': str(e)}
@@ -124,6 +125,9 @@ def global_init():
 	#elif g_role == 'index-segment':
 	#	create_all_namespaces()
 
+
+# run global init here
+global_init()
 
 
 
