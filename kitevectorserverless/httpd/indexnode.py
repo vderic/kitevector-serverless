@@ -1,3 +1,4 @@
+import numpy as np
 import json
 import os
 import threading
@@ -218,6 +219,29 @@ def status():
 
 	return jsonify(status)
 		
+@app.route("/query", methods=['POST'])
+def query():
+	if not request.is_json:
+		abort(400, 'request is not in JSON format')
+
+	req = request.json	
+	vector = np.float32([req['vector']])
+	ns = req.get('namespace')
+	if ns is None:
+		ns = 'default'
+
+	idx = get_index(ns)
+	if idx is None:
+		raise ValueError('namespace not found')
+
+	ids, distances = idx.query(req)
+
+	print(ids)
+	print(distances)
+
+	response = {'code': 200, 'message': 'ok'}
+	return jsonify(response)
+
 
 def run():
 	app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)

@@ -83,11 +83,11 @@ class Index:
 	def query(self, req):	
 		with self.lock.gen_rlock():
 			# found the index and get the nbest
-			embedding = np.float32(req['vector'])
-			params = req['search_params']['params']
+			embedding = np.float32([req['vector']])
+			params = req['params']['params']
 			ef = params['ef']
 			k  = params['k']
-			num_threads = params['num_threads']
+			num_threads = 1
 			self.index.set_ef(ef)
 			self.index.set_num_threads(num_threads)
 			ids, distances = self.index.knn_query(embedding, k=k)

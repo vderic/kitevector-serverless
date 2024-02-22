@@ -29,10 +29,6 @@ def env_init():
 	os.environ['DELTA_DYNAMO_TABLE_NAME'] = 'delta_log'
 
 	# For GCS,
-	os.environ['GOOGLE_SERVICE_ACCOUNT'] = 'account'
-	os.environ['GOOGLE_SERVICE_ACCOUNT_KEY'] = 'key'
-	os.environ['GOOGLE_BUCKET'] = 'bucket'
-
 	with open(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')) as f:
 		gcp_secret = f.read()
 		os.environ['GOOGLE_APPLICATION_CREDENTIALS_JSON'] = gcp_secret
