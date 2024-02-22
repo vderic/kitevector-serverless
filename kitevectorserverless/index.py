@@ -141,11 +141,10 @@ class Index:
 		
 	
 	def create_index(self):
-		req = self.config
 		# create index inside the lock
-		space = req['metric_type']
-		dim = req['dimension']
-		params = req['params']
+		space = self.config['metric_type']
+		dim = self.config['dimension']
+		params = self.config['params']
 		max_elements = params['max_elements']
 		ef_construction = params['ef_construction']
 		M = params['M']
@@ -159,15 +158,15 @@ class Index:
 	
 	def create_delta_table(self):
 		if self.role == 'singleton' or self.role == 'index-master':
-			db_table = db.KVDeltaTable(self.db_uri, req['schema'], self.db_storage_options)
+			db_table = db.KVDeltaTable(self.db_uri, self.config['schema'], self.db_storage_options)
 			db_table.create()
 		elif self.role == 'index-segment':
 			# check the db_uri exists
-			db_table = db.KVDeltaTable(self.db_uri, req['schema'], self.db_storage_options)
+			db_table = db.KVDeltaTable(self.db_uri, self.config['schema'], self.db_storage_options)
 			db_table.get_dt()
 
 
-	def create(self, req):
+	def create(self):
 		with self.lock.gen_wlock():
 			self.create_index()
 			self.create_delta_table()

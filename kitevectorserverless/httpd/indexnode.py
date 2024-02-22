@@ -161,10 +161,6 @@ def create_index():
 
 @app.route("/remove", methods=['GET'])
 def remove_index():
-	name = request.args.get('index')
-	if name is None:
-		abort(400, 'index is not found in request')
-
 	with g_nslock:
 		for ns, idx in g_namespaces.items():
 			idx.delete()
