@@ -23,11 +23,53 @@ class FileStorage:
 	def __init__(self, storage_options=None):
 		self.storage_options = storage_options
 	
+	def download(self, src_path, dest_path):
+		pass
+
+	def upload(self, src_path, dest_path):
+		pass
+
+	def list(self, prefix, delimiter=None):
+		pass
+
+	def listdir(self, prefix):
+		pass
+
+	def rename(self, src_path, dest_path):
+		pass
 
 class LocalStorage(FileStorage):
 
 	def __init__(self, storage_options=None):
 		super().__init__(storage_options)
+
+	def copy(self, src_path, dest_path):
+		pass
+
+	def download(self, src_path, dest_path):
+		self.copy(src_path, dest_path)
+
+	def upload(self, src_path, dest_path):
+		self.copy(src_path, dest_path)
+
+	def list(self, prefix, delimiter=None):
+		for path, dirs, files in os.walk(prefix):
+			print('path=', path)
+			print('dirs=', dirs)
+			print('files=', files)
+
+	def listdir(self, prefix):
+		files = os.listdir(prefix)
+		l = []
+		for f in files:
+			path = os.path.join(prefix,f)
+			if os.path.isdir(path):
+				l.append(path)
+		return l
+			
+
+	def rename(self, src_path, dest_path):
+		pass
 
 class S3Storage(FileStorage):
 	
@@ -77,7 +119,28 @@ class GCStorage(FileStorage):
 		generation_match_precondition = 0
 		blob.upload_from_filename(src_path, if_generation_match=generation_match_precondition)
 
-	def glob(self, prefix, delimiter=None):
+	def listdir(self, prefix):
+		if not prefix.startswith("gs://"):
+			raise ValueError('filepath is not begin with gs://')
+			
+		delimiter = '/'
+		p =  prefix[5:].split('/', 1)
+		bucket_name = p[0]
+		blob_name = p[1]
+
+		client = storage.Client()
+		blobs = client.list_blobs(bucket_name, prefix=blob_name, delimiter = delimiter)
+
+		for blob in blobs:
+			pass
+
+		dirs = []
+		for p in blobs.prefixes:
+			dirs.append(os.path.join("gs://", bucket_name, p))
+
+		return dirs
+
+	def list(self, prefix, delimiter=None):
 		if not prefix.startswith("gs://"):
 			raise ValueError('filepath is not begin with gs://')
 			
@@ -123,5 +186,14 @@ if __name__ == '__main__':
 	storage_options = {'GOOGLE_APPLICATION_CREDENTIALS': os.path.join(os.environ.get('HOME'), '.google.json')}
 	fs = FileStorageFactory.create(storage_options)
 
-	#fs.glob('gs://vitesse_deltalake/db/serverless/', delimiter='/')
-	fs.glob('gs://vitesse_deltalake/db/serverless/')
+	dirs = fs.listdir('gs://vitesse_deltalake/db/serverless/')
+	print(dirs)
+	#fs.list('gs://vitesse_deltalake/db/serverless/')
+
+	localfs = FileStorageFactory.create()
+	dirs = localfs.listdir('vitesse/db')
+	print(dirs)
+
+
+
+
