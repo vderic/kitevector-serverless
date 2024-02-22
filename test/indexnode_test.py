@@ -1,4 +1,6 @@
 import os
+import sys
+import subprocess
 
 def env_init():
 	os.environ['API_USER'] = 'vitesse'
@@ -34,6 +36,7 @@ def env_init():
 		os.environ['GOOGLE_APPLICATION_CREDENTIALS_JSON'] = gcp_secret
 
 	os.environ['PORT'] = '8080'
+	os.environ['PYTHONPATH']=''
 
 	# JSON
 	os.environ['INDEX_JSON']='''{"name":"serverless",
@@ -49,14 +52,13 @@ def env_init():
 
 env_init()
 
-from kitevectorserverless.httpd import indexnode
-
-def global_init():
-	indexnode.global_init()
-
-global_init()
-
 if __name__ == "__main__":
 
-	indexnode.run(debug=True)
+	try:
+		# in Dockerfile
+		#CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 kitevectorserverless.httpd.indexnode:app
+		subprocess.run(['gunicorn', '--workers', '1', '--threads', '8', 
+			'--timeout', '0', 'kitevectorserverless.httpd.indexnode:app'])
+	except KeyboardInterrupt:
+		sys.exit(0)
 	
