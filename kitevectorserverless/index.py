@@ -62,6 +62,12 @@ class Index:
 
 		#self.load(datadir)
 
+	@staticmethod
+	def get_all_namespaces(db_uri, index_name):
+		prefix = os.path.join(db_uri, index_name)
+		pass
+
+
 	def get_redis(self):
 		r = redis.Redis(host= self.redis_host)
 		return r
