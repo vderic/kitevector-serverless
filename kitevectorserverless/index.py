@@ -91,12 +91,20 @@ class Index:
 				# create a new index
 				self.create_index()
 			else:
-				with self.lock.gen_wlock:
-					with tempfile.NamedTemporaryFile(delete_on_close=False) as fp:
+				with tempfile.NamedTemporaryFile(delete=False) as fp:
+					try:
 						fp.close()
 						self.fs.download(fpath, fp.name)
-						with open(tf.name, 'rb') as f:
-							self.index = pickle.load(f)
+						space = self.config['metric_type']
+						dim = self.config['dimension']
+						p = hnswlib.Index(space=space, dim = dim)
+						p.load_index(fp.name)
+						self.index = p
+						print(f"load index {fpath}")
+					finally:
+						os.unlink(fp.name)
+							
+
 
 				
 	def query(self, req):	
@@ -185,7 +193,7 @@ class Index:
 
 	def delete(self):
 		with self.lock.gen_wlock():
-			fpath = os.path.join(self.datadir, '{}.hnsw'.format(self.fragid))
+			fpath = self.get_index_filename()
 			if os.path.exists(fpath):
 				os.remove(fpath)
 
@@ -197,4 +205,21 @@ class Index:
 			return {'status':'error', 'message': 'index not found'}
 
 		return {'status':'ok', 'element_count': self.index.element_count, 'max_elements': self.index.max_elements}
+
+	def get_index_filename(self):
+		return os.path.join(self.datadir, '{}.hnsw'.format(self.fragid))
+
+	def flush(self):
+		with self.lock.gen_wlock():
+			fpath = self.get_index_filename()
+			if self.index.element_count <= 0:
+				return
+			with tempfile.NamedTemporaryFile(delete=False) as fp:
+				try:
+					fp.close()
+					self.index.save_index(fp.name)
+					self.fs.upload(fp.name, fpath)
+					print(f"index file uploaded to {fpath}")
+				finally:
+					os.unlink(fp.name)
 

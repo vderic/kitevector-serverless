@@ -240,6 +240,15 @@ def query():
 	response = {'code': 200, 'message': 'ok'}
 	return jsonify(response)
 
+@app.route('/flush', methods=['GET'])
+def flush():
+	with g_nslock:
+		for key, idx in g_namespaces.items():
+			print('flush key={}'.format(key))
+			idx.flush()
+	response = {'code': 200, 'message': 'ok'}
+	return jsonify(response)
+			
 
 def run(debug=False):
 	app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=debug)

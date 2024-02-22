@@ -123,7 +123,7 @@ class GCStorage(FileStorage):
 		# object that does not yet exist, set the if_generation_match precondition to 0.
 		# If the destination object already exists in your bucket, set instead a
 		# generation-match precondition using its generation number.
-		generation_match_precondition = 0
+		generation_match_precondition = None
 		blob.upload_from_filename(src_path, if_generation_match=generation_match_precondition)
 
 	def listdir(self, prefix):

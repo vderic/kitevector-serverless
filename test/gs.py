@@ -1,5 +1,6 @@
 from kitevectorserverless.storage import FileStorageFactory
 import os
+import tempfile
 
 if __name__ == '__main__':
 	
@@ -22,3 +23,7 @@ if __name__ == '__main__':
 	print(exists)
 
 
+	with tempfile.NamedTemporaryFile(delete=False) as fp:
+		fp.close()
+		gsfs.download('gs://vitesse_deltalake/db/serverless/default/6-a0bb2b44-529a-47dd-b8b3-d6a7fb769d0a-0.parquet', fp.name)
+		print(fp.name)
