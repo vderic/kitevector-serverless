@@ -37,6 +37,9 @@ class FileStorage:
 
 	def rename(self, src_path, dest_path):
 		pass
+	
+	def exists(self, path):
+		return False
 
 class LocalStorage(FileStorage):
 
@@ -70,6 +73,10 @@ class LocalStorage(FileStorage):
 
 	def rename(self, src_path, dest_path):
 		pass
+
+
+	def exists(self, path):
+		return os.path.exists(path)
 
 class S3Storage(FileStorage):
 	
@@ -178,4 +185,18 @@ class GCStorage(FileStorage):
 		bucket = client.bucket(bucket_name)
 		blob = bucket.blob(src_blob)
 		new_blob = bucket.rename_blob(blob, dest_blob)
+
+	def exists(self, path):
+		if not path.startswith("gs://"):
+			raise ValueError('filepath is not begin with gs://')
+		p = path[5:].split('/', 1)
+		bucket_name = p[0]
+		blob_name = p[1]
+
+		client = storage.Client()
+		bucket = client.bucket(bucket_name)
+		blob = bucket.blob(blob_name)
+		return blob.exists()
+
+
 
