@@ -63,15 +63,14 @@ def get_index(namespace='default'):
 
 def load_all_namespaces():
 
-	# TODO: get list of namespaces here from Redis LRANGE, key = namespace:$user:$indexname, value = [ns1,ns2]
-	list_ns = ['default']
+	nss = Index.get_all_namespaces(g_db_storage_options, g_db_uri, g_index_config['name'])
 
 	# load all namespaces index here
 	with g_nslock:
-		for ns in list_ns:
+		for ns in nss:
 			p = Index(config=g_index_config, fragid=g_fragid, index_uri=g_index_uri, db_uri=g_db_uri,
 				storage_options=g_db_storage_options, redis=g_redis_host, role=g_role, user=g_user, namespace=ns)
-			p.create()
+			p.load()
 			set_index(p, ns)
 
 def create_all_namespaces():
@@ -119,10 +118,9 @@ def global_init():
 	print(g_index_uri)
 	print(g_db_uri)
 
-	nss = Index.get_all_namespaces(g_db_storage_options, g_db_uri, g_index_config['name'])
 	# global init index. If there is a index file indexdir/$fragid.hnsw found, load the index file into the memory
-	#if g_role == 'singleton' or g_role == 'query-segment':
-	#	load_all_namespaces()
+	if g_role == 'singleton' or g_role == 'query-segment':
+		load_all_namespaces()
 	#elif g_role == 'index-segment':
 	#	create_all_namespaces()
 

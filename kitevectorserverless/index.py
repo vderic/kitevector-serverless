@@ -1,3 +1,4 @@
+import tempfile
 import shutil
 import os
 import json
@@ -78,18 +79,25 @@ class Index:
 		return r
 
 	def load(self):
-		if not os.path.isdir(self.datadir):
-			raise Exception("data directory not exists")
-		
-		fpath = os.path.join(self.datadir, '{}.hnsw'.format(str(self.fragid)))
-		if not os.path.exists(fname):
-			return False
+		with self.lock.gen_wlock():
+			# load delta table
+			db_table = db.KVDeltaTable(self.db_uri, self.config['schema'], self.db_storage_options)
+			db_table.get_dt()
 
-		with self.lock.gen_wlock:
-			with open(fpath, 'rb') as fp:
-				self.index = pickle.load(fp)
+			# load index file
+			fpath = os.path.join(self.datadir, '{}.hnsw'.format(str(self.fragid)))
+			print(fpath)
+			if not self.fs.exists(fpath):
+				# create a new index
+				self.create_index()
+			else:
+				with self.lock.gen_wlock:
+					with tempfile.NamedTemporaryFile(delete_on_close=False) as fp:
+						fp.close()
+						self.fs.download(fpath, fp.name)
+						with open(tf.name, 'rb') as f:
+							self.index = pickle.load(f)
 
-		return True
 				
 	def query(self, req):	
 		with self.lock.gen_rlock():
@@ -123,31 +131,38 @@ class Index:
 		key = 'index:{}:{}'.format(user, idxname)
 		return cache.delete(key)
 		
-	def create(self):
+	
+	def create_index(self):
+		req = self.config
+		# create index inside the lock
+		space = req['metric_type']
+		dim = req['dimension']
+		params = req['params']
+		max_elements = params['max_elements']
+		ef_construction = params['ef_construction']
+		M = params['M']
+		#num_threads = params['num_threads']
+		p = hnswlib.Index(space=space, dim = dim)
+		p.init_index(max_elements=max_elements, ef_construction=ef_construction, M=M)
+		#p.set_num_threads(num_threads)
+
+		# save index to processing index so that we can keep track of the status
+		self.index = p
+	
+	def create_delta_table(self):
+		if self.role == 'singleton' or self.role == 'index-master':
+			db_table = db.KVDeltaTable(self.db_uri, req['schema'], self.db_storage_options)
+			db_table.create()
+		elif self.role == 'index-segment':
+			# check the db_uri exists
+			db_table = db.KVDeltaTable(self.db_uri, req['schema'], self.db_storage_options)
+			db_table.get_dt()
+
+
+	def create(self, req):
 		with self.lock.gen_wlock():
-			req = self.config
-			# create index inside the lock
-			space = req['metric_type']
-			dim = req['dimension']
-			params = req['params']
-			max_elements = params['max_elements']
-			ef_construction = params['ef_construction']
-			M = params['M']
-			#num_threads = params['num_threads']
-			p = hnswlib.Index(space=space, dim = dim)
-			p.init_index(max_elements=max_elements, ef_construction=ef_construction, M=M)
-			#p.set_num_threads(num_threads)
-
-			if self.role == 'singleton' or self.role == 'index-master':
-				db_table = db.KVDeltaTable(self.db_uri, req['schema'], self.db_storage_options)
-				db_table.create()
-			elif self.role == 'index-segment':
-				# check the db_uri exists
-				db_table = db.KVDeltaTable(self.db_uri, req['schema'], self.db_storage_options)
-				db_table.get_dt()
-
-			# save index to processing index so that we can keep track of the status
-			self.index = p
+			self.create_index()
+			self.create_delta_table()
 
 	def insertData(self, req):
 		# TODO: get namespace from request

@@ -16,6 +16,8 @@ if __name__ == '__main__':
 
 
 	exists = gsfs.exists('gs://vitesse_deltalake/db/serverless/default/6-a0bb2b44-529a-47dd-b8b3-d6a7fb769d0a-0.parquet')
+	gsfs.list('gs://vitesse_deltalake/db/serverless/', delimiter='delta_log')
+	gsfs.list('gs://vitesse_deltalake/db/serverless/')
 
 	print(exists)
 
