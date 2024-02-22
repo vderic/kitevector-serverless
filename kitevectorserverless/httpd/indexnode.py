@@ -119,6 +119,7 @@ def global_init():
 	print(g_index_uri)
 	print(g_db_uri)
 
+	nss = Index.get_all_namespaces(g_db_storage_options, g_db_uri, g_index_config['name'])
 	# global init index. If there is a index file indexdir/$fragid.hnsw found, load the index file into the memory
 	#if g_role == 'singleton' or g_role == 'query-segment':
 	#	load_all_namespaces()
@@ -126,7 +127,6 @@ def global_init():
 	#	create_all_namespaces()
 
 
-global_init()
 
 
 @app.route("/create", methods=['POST'])
@@ -243,6 +243,6 @@ def query():
 	return jsonify(response)
 
 
-def run():
-	app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)
+def run(debug=False):
+	app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=debug)
 

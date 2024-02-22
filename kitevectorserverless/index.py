@@ -12,6 +12,7 @@ import heapq
 from readerwriterlock import rwlock
 import redis
 from kitevectorserverless import db
+from kitevectorserverless.storage import FileStorageFactory
 
 class IndexSort:
 
@@ -59,13 +60,17 @@ class Index:
 		self.lock = rwlock.RWLockFair()
 		self.index = None
 		self.namespace = namespace
+		self.fs = FileStorageFactory.create(storage_options)
 
 		#self.load(datadir)
 
 	@staticmethod
-	def get_all_namespaces(db_uri, index_name):
-		prefix = os.path.join(db_uri, index_name)
-		pass
+	def get_all_namespaces(storage_options, db_uri, index_name):
+		fs = FileStorageFactory.create(storage_options)
+		prefix = os.path.join(db_uri, index_name + '/')
+		dirs = fs.listdir(prefix)
+		nss = [ d.removeprefix(prefix).removesuffix('/') for d in dirs]
+		return nss
 
 
 	def get_redis(self):
