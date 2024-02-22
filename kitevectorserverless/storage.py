@@ -1,6 +1,7 @@
 from google.cloud import storage
 import google.auth
 import os
+import shutil
 
 class FileStorageFactory:
 
@@ -41,6 +42,12 @@ class FileStorage:
 	def exists(self, path):
 		return False
 
+	def remove(self, path):
+		pass
+
+	def rmtree(self, path):
+		pass
+
 class LocalStorage(FileStorage):
 
 	def __init__(self, storage_options=None):
@@ -77,6 +84,14 @@ class LocalStorage(FileStorage):
 
 	def exists(self, path):
 		return os.path.exists(path)
+
+	def rmtree(self, path):
+		if os.path.exists(path):
+			shutil.rmtree(path)
+
+	def remove(self, path):
+		if os.path.exists(path):
+			os.remove(path)
 
 class S3Storage(FileStorage):
 	
@@ -198,5 +213,28 @@ class GCStorage(FileStorage):
 		blob = bucket.blob(blob_name)
 		return blob.exists()
 
+	def rmtree(self, path):
+		if not path.startswith("gs://"):
+			raise ValueError('filepath is not begin with gs://')
+		p = path[5:].split('/', 1)
+		bucket_name = p[0]
+		prefix = p[1]
+		client = storage.Client()
+		bucket = client.bucket(bucket_name)
+		blobs = bucket.list_blobs(prefix=prefix)
+		for blob in blobs:
+			blob.delete()
+
+	def remove(self, path):
+		if not path.startswith("gs://"):
+			raise ValueError('filepath is not begin with gs://')
+		p = path[5:].split('/', 1)
+		bucket_name = p[0]
+		blob_name = p[1]
+
+		client = storage.Client()
+		bucket = client.bucket(bucket_name)
+		blob = bucket.blob(blob_name)
+		blob.delete()
 
 

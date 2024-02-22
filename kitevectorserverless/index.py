@@ -194,11 +194,10 @@ class Index:
 	def delete(self):
 		with self.lock.gen_wlock():
 			fpath = self.get_index_filename()
-			if os.path.exists(fpath):
-				os.remove(fpath)
+			if self.fs.exists(fpath):
+				self.fs.remove(fpath)
 
-			if os.path.exists(self.db_uri):
-				shutil.rmtree(self.db_uri)
+			self.fs.rmtree(self.db_uri)
 
 	def status(self):
 		if self.index is None:

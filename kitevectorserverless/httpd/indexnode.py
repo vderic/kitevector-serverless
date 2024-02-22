@@ -168,6 +168,7 @@ def remove_index():
 	with g_nslock:
 		for ns, idx in g_namespaces.items():
 			idx.delete()
+		g_namespaces.clear()
 
 	response = {'code': 200, 'message': 'ok'}
 	return jsonify(response)
