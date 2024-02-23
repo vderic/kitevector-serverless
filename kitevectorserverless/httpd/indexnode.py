@@ -303,7 +303,7 @@ def query():
 		id = row[pri.name]
 		idx = np.where(ids[0] == id)[0][0]
 		distance = distances[0][idx]
-		t = [distance]
+		t = [distance.item(), id]
 		for f in output_fields:
 			t.append(row[f])
 		results.append(tuple(t))
@@ -311,7 +311,25 @@ def query():
 	results = sorted(results, key=itemgetter(0))
 	print(results)
 
-	response = {'code': 200, 'message': 'ok'}
+	res = {}
+	res['distances'] = []
+	res['ids'] = []
+
+	fields = {}
+	for f in output_fields:
+		fields[f] = []
+
+	for r in results:
+		res['distances'].append(r[0])
+		res['ids'].append(r[1])
+		i=2
+		for f in output_fields:
+			fields[f].append(r[i])
+			i+=1
+	res['output_fields'] = fields
+
+	response = {'code': 200, 'data': res}
+	print(response)
 	return jsonify(response)
 
 
