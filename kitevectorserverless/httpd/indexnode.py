@@ -6,6 +6,7 @@ from werkzeug.exceptions import HTTPException, BadRequest
 from flask import Flask, request, json, abort, jsonify
 from kitevectorserverless.index import Index
 from kitevectorserverless.datatype import IndexConfig
+from operator import itemgetter
 
 # Flask initialization
 app = Flask(__name__)
@@ -273,19 +274,20 @@ def query():
 
 	ids, distances = idx.query(req)
 
-	print(ids)
-	print(distances)
+	print(ids[0])
+	print(distances[0])
 
 	if g_role != 'singleton':
-		response = {'ids': ids, 'distances': distances}
+		response = {'ids': ids[0], 'distances': distances[0]}
 		return jsonify(response)
 
 	schema = g_index_config.schema
 
 	pri = schema.get_primary()
 
-	columns = [pri.name]
-	columns.extend(output_fields)
+	columns = output_fields.copy()
+	if pri.name not in columns:
+		columns.append(pri.name)
 
 	filters = [(pri.name, 'in', ids[0])]
 	if req_filters is not None:
@@ -294,9 +296,20 @@ def query():
 	
 	print(columns)
 	print(filters)
-	pd = idx.filter(columns, filters=filters)
+	df = idx.filter(columns, filters=filters)
 
-	print(pd)
+	results = []
+	for index, row in df.iterrows():
+		id = row[pri.name]
+		idx = np.where(ids[0] == id)[0][0]
+		distance = distances[0][idx]
+		t = [distance]
+		for f in output_fields:
+			t.append(row[f])
+		results.append(tuple(t))
+
+	results = sorted(results, key=itemgetter(0))
+	print(results)
 
 	response = {'code': 200, 'message': 'ok'}
 	return jsonify(response)
