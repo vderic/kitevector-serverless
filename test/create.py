@@ -6,7 +6,7 @@ if __name__ == '__main__':
 		"dimension" : 1536,
 		"metric_type" : "ip",
 		"schema": { "fields" : [{"name": "id", "type":"int64", "is_primary": "true"},
-			{"name":"vector", "type":"vector"},
+			{"name":"vector", "type":"vector", "is_anns": "true"},
 			{"name":"animal", "type":"string"}
 			]},
 		"params": {"max_elements" : 1000, "ef_construction":48, "M": 24}

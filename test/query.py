@@ -51,7 +51,7 @@ if __name__ == '__main__':
 
 	req = {'vector': vector,
 			'params': search_params,
-			'output_fields': ['animal'],
+			'output_fields': ['animal', 'id'],
 			'limit': 10,
 			'namespace': 'default'
 			}
