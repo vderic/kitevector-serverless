@@ -13,6 +13,18 @@ class SchemaField:
 @dataclass
 class Schema:
 	fields: list[SchemaField]
+
+	def get_primary(self):
+		for f in self.fields:
+			if f.is_primary:
+				return f
+		return None
+	
+	def get_vector(self):
+		for f in self.fields:
+			if f.is_anns or f.type == 'vector':
+				return f
+		return None
 	
 @dataclass_json
 @dataclass

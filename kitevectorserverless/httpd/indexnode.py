@@ -253,6 +253,15 @@ def query():
 		abort(400, 'request is not in JSON format')
 
 	req = request.json	
+	if req.get('vector') is None:
+		raise ValueError('vector not found')
+
+	output_fields = req.get('output_fields')
+	if output_fields is None:
+		raise ValueError('output_fields not found')
+
+	req_filters = req.get('filter')
+
 	vector = np.float32([req['vector']])
 	ns = req.get('namespace')
 	if ns is None:
@@ -272,7 +281,27 @@ def query():
 		return jsonify(response)
 
 	schema = g_index_config.schema
+
+	pri = schema.get_primary()
+
+	columns = [pri.name]
+	columns.extend(output_fields)
+
+	filters = [(pri.name, 'in', ids[0])]
+	if req_filters is not None:
+		for f in req_filters:
+			filters.append(tuple(f))
 	
+	print(columns)
+	print(filters)
+	pd = idx.filter(columns, filters=filters)
+
+	print(pd)
+
+	response = {'code': 200, 'message': 'ok'}
+	return jsonify(response)
+
+
 @app.route('/flush', methods=['GET'])
 def flush():
 	with g_nslock:
