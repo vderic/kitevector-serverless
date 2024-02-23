@@ -9,3 +9,4 @@ pandas
 numpy
 pyarrow
 google-cloud-storage
+dataclasses-json

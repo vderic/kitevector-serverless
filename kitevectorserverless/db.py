@@ -3,6 +3,7 @@ import sys
 import heapq
 import numpy as np
 import pyarrow as pa
+from kitevectorserverless.datatype import IndexConfig, Schema
 from deltalake import DeltaTable, write_deltalake
 from deltalake.exceptions import DeltaError, DeltaProtocolError, TableNotFoundError, CommitFailedError
 
@@ -165,72 +166,78 @@ class KVDeltaTable(BaseVector):
 		super().__init__()
 		self.table_uri = table_uri
 		self.storage_options=storage_options
-		self.schema_dict = schema
-		self.schema = self.to_pyarrow_schema(schema)
+		self.schema = schema
+		self.pa_schema = self.to_pyarrow_schema(schema)
 		self.dt = None
-		self.primary_col = self.primary_column(schema)
-		if self.primary_col == -1:
+		self.primary_cno = self.primary_column()
+		if self.primary_cno == -1:
 			raise ValueError('primary id column not found')
 
-		self.vector_col = self.vector_column(schema)
-		if self.vector_col == -1:
+		self.vector_cno = self.vector_column()
+		if self.vector_cno == -1:
 			raise ValueError('vector column not found')
 
-		print(self.primary_col)
-		print(self.vector_col)
+		print(self.primary_cno)
+		print(self.vector_cno)
 
-	def primary_column(self, schema_dict):
-		fields = schema_dict['fields']
+	def get_column_name(self, cno):
+		return self.pa_schema.names[cno]
+
+	def get_column_type(self, cno):
+		return self.pa_schema.types[cno]
+
+	def primary_column(self):
+		fields = self.schema.fields
 		idx = 0
 		for f in fields:
-			if f.get('is_primary', False):
+			if f.is_primary:
 				return idx
 			idx += 1
 		return -1
 
-	def vector_column(self, schema_dict):
-		fields = schema_dict['fields']
+	def vector_column(self):
+		fields = self.schema.fields
 		idx = 0
 		for f in fields:
-			if f['type'] == 'vector':
+			if f.type == 'vector':
 				return idx
 			idx += 1
 		return -1
 
 	def get_ids_vectors(self, data):
-		primary_cname = self.schema.names[self.primary_col]
-		primary_type = self.schema.types[self.primary_col]
-		vector_cname = self.schema.names[self.vector_col]
-		vector_type = self.schema.types[self.vector_col]
+		primary_cname = self.pa_schema.names[self.primary_cno]
+		primary_type = self.pa_schema.types[self.primary_cno]
+		vector_cname = self.pa_schema.names[self.vector_cno]
+		vector_type = self.pa_schema.types[self.vector_cno]
 
 		#return pa.array(data[primary_cname], primary_type).to_numpy(), pa.array(data[vector_cname], vector_type).to_numpy()
 		return data[primary_cname], np.float32(data[vector_cname])
 
-	def to_pyarrow_schema(self, schema_dict):
+	def to_pyarrow_schema(self, schema):
 		pafields = []
 
-		fields = schema_dict['fields']
+		fields = schema.fields
 		for f in fields:
-			cname = f['name']
+			cname = f.name
 			dtype = None
-			if f['type'] == 'int8':
+			if f.type == 'int8':
 				dtype = pa.int8()
-			elif f['type'] == 'int16':
+			elif f.type == 'int16':
 				dtype = pa.int16()
-			elif f['type'] == 'int32':
+			elif f.type == 'int32':
 				dtype = pa.int32()
-			elif f['type'] == 'int64':
+			elif f.type == 'int64':
 				dtype = pa.int64()
-			elif f['type'] == 'float':
+			elif f.type == 'float':
 				dtype = pa.float32()
-			elif f['type'] == 'double':
+			elif f.type == 'double':
 				dtype = pa.float64()
-			elif f['type'] == 'string':
+			elif f.type == 'string':
 				dtype = pa.string()
-			elif f['type'] == 'vector':
+			elif f.type == 'vector':
 				dtype = pa.list_(pa.float32())
 			else:
-				raise ValueError('unsupport data type {}'.format(f['type']))
+				raise ValueError('unsupport data type {}'.format(f.type))
 
 			pafields.append(pa.field(cname, dtype))
 
@@ -238,8 +245,8 @@ class KVDeltaTable(BaseVector):
 		
 
 	def to_pyarrow_table(self, data_json):
-		names = self.schema.names
-		types = self.schema.types
+		names = self.pa_schema.names
+		types = self.pa_schema.types
 
 		padata = []
 		for name, dtype in zip(names, types):
@@ -254,7 +261,7 @@ class KVDeltaTable(BaseVector):
 		return self.dt
 
 	def create(self):
-		self.dt = DeltaTable.create(self.table_uri, schema=self.schema, storage_options=self.storage_options, mode='error')
+		self.dt = DeltaTable.create(self.table_uri, schema=self.pa_schema, storage_options=self.storage_options, mode='error')
 		#self.dt = DeltaTable.create(self.table_uri, schema=self.schema, storage_options=self.storage_options, mode='overwrite')
 
 	def to_pandas(self, columns=None, filters=None):

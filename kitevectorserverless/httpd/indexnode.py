@@ -5,10 +5,10 @@ import threading
 from werkzeug.exceptions import HTTPException, BadRequest
 from flask import Flask, request, json, abort, jsonify
 from kitevectorserverless.index import Index
+from kitevectorserverless.datatype import IndexConfig
 
 # Flask initialization
 app = Flask(__name__)
-
 
 @app.errorhandler(BadRequest)
 def handler_bad_request(e):
@@ -52,6 +52,7 @@ g_index_config = None
 g_role = None
 g_redis_host = None
 g_user = None
+g_schema = None
 
 def set_index(idx, namespace):
 	ns = g_namespaces.get(namespace)
@@ -64,7 +65,7 @@ def get_index(namespace='default'):
 
 def load_all_namespaces():
 
-	nss = Index.get_all_namespaces(g_db_storage_options, g_db_uri, g_index_config['name'])
+	nss = Index.get_all_namespaces(g_db_storage_options, g_db_uri, g_index_config.name)
 
 	# load all namespaces index here
 	with g_nslock:
@@ -80,27 +81,52 @@ def create_all_namespaces():
 def global_init():
 
 	global g_namespaces, g_fragid, g_fragcnt, g_index_uri, g_db_uri, g_db_storage_options, g_index_config, g_role, g_redis_host, g_user
+	global g_schema
 
 	g_fragid = int(os.environ.get('CLOUD_RUN_TASK_INDEX'))
 	g_fragcnt = int(os.environ.get('CLOUD_RUN_TASK_COUNT'))
 
 	g_index_uri = os.environ.get('INDEX_URI')
+	if g_index_uri is None:
+		raise ValueError('INDEX_URI env not found')
+
 	g_db_uri = os.environ.get('DATABASE_URI')
+	if g_db_uri is None:
+		raise ValueError('DATABASE_URI env not found')
+
 	g_db_storage_options = None
 
 	if g_index_uri.startswith("s3://") or g_index_uri.startswith("s3a://"):
-		aws_id = os.environ['AWS_ACCESS_KEY_ID']
-		aws_key = os.environ['AWS_SECRET_ACCESS_KEY']
-		aws_region = os.environ['AWS_REGION']
-		aws_lock_provider = os.environ['AWS_S3_LOCKING_PROVIDER']
-		aws_lock_table = os.environ['DELTA_DYNAMO_TABLE_NAME']
+		aws_id = os.environ.get('AWS_ACCESS_KEY_ID')
+		if aws_id is None:
+			raise ValueError('AWS_ACCESS_KEY_ID env not found')
+
+		aws_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+		if aws_key is None:
+			raise ValueError('AWS_SECRET_ACCESS_KEY env not found')
+
+		aws_region = os.environ.get('AWS_REGION')
+		if aws_region is None:
+			raise ValueError('AWS_REGION env not found')
+
+		aws_lock_provider = os.environ.get('AWS_S3_LOCKING_PROVIDER')
+		if aws_lock_provider is None:
+			raise ValueError('AWS_S3_LOCKING_PROVIDER env not found')
+
+		aws_lock_table = os.environ.get('DELTA_DYNAMO_TABLE_NAME')
+		if aws_lock_table is None:
+			raise ValueError('DELTA_DYNAMO_TABLE_NAME env not found')
+
 		g_db_storage_options = {'AWS_ACCESS_KEY_ID': aws_id,
 								'AWS_SECRET_ACCESS_KEY': aws_key,
 								'AWS_REGION': aws_region,
 								'AWS_S3_LOCKING_PROVIDER': aws_lock_provider,
 								'DELTA_DYNAMO_TABLE_NAME': aws_lock_table}
 	elif g_index_uri.startswith("gs://"):
-		gs_secret = os.environ['GOOGLE_APPLICATION_CREDENTIALS_JSON']
+		gs_secret = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON')
+		if gs_secret is None:
+			raise ValueError('GOOGLE_APPLICATION_CREDENTIALS_JSON env not found')
+
 		fpath = os.path.join(os.environ.get('HOME'), '.google.json')
 		if not os.path.exists(fpath):
 			with open(fpath, 'w') as f:
@@ -111,24 +137,27 @@ def global_init():
 								'GOOGLE_APPLICATION_CREDENTIALS': fpath}
 
 	# should be initialize here
-	g_index_config = json.loads(os.environ.get('INDEX_JSON'))
 	g_role = os.environ.get('KV_ROLE')
-	g_redis_host = os.environ.get('REDIS_HOST')
-	g_user = os.environ.get('API_USER')
+	if g_role is None:
+		raise ValueError('KV_ROLE env not found')
 
-	print(g_index_uri)
-	print(g_db_uri)
+	g_redis_host = os.environ.get('REDIS_HOST')
+	if g_redis_host is None:
+		raise ValueError('REDIS_HOST env not found')
+
+	g_user = os.environ.get('API_USER')
+	if g_user is None:
+		raise ValueError('API_USER env not found')
+
+	g_index_config = IndexConfig.from_json(os.environ.get('INDEX_JSON'))
+	if g_index_config is None:
+		raise ValueError('INDEX_JSON env not found')
 
 	# global init index. If there is a index file indexdir/$fragid.hnsw found, load the index file into the memory
 	if g_role == 'singleton' or g_role == 'query-segment':
 		load_all_namespaces()
 	#elif g_role == 'index-segment':
 	#	create_all_namespaces()
-
-
-# run global init here
-global_init()
-
 
 
 @app.route("/create", methods=['POST'])
@@ -238,9 +267,12 @@ def query():
 	print(ids)
 	print(distances)
 
-	response = {'code': 200, 'message': 'ok'}
-	return jsonify(response)
+	if g_role != 'singleton':
+		response = {'ids': ids, 'distances': distances}
+		return jsonify(response)
 
+	schema = g_index_config.schema
+	
 @app.route('/flush', methods=['GET'])
 def flush():
 	with g_nslock:
@@ -254,3 +286,6 @@ def flush():
 def run(debug=False):
 	app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=debug)
 
+
+# run global init here
+global_init()

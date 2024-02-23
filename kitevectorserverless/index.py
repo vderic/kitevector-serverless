@@ -13,6 +13,7 @@ import heapq
 from readerwriterlock import rwlock
 import redis
 from kitevectorserverless import db
+from kitevectorserverless.datatype import IndexConfig
 from kitevectorserverless.storage import FileStorageFactory
 
 class IndexSort:
@@ -43,7 +44,6 @@ class IndexSort:
 
 		return ids, scores
 
-
 # GCP env variables for cloud jobs CLOUD_RUN_TASK_INDEX and CLOUD_RUN_TASK_COUNT
 # REDIS_HOST
 # DATABASE_ENDPOINT
@@ -52,8 +52,8 @@ class Index:
 	def __init__(self, config, fragid, index_uri, db_uri, storage_options, redis, role, user, namespace='default'):
 		self.config = config
 		self.fragid = fragid
-		self.datadir = os.path.join(index_uri, config['name'], namespace)
-		self.db_uri = os.path.join(db_uri, config['name'], namespace)
+		self.datadir = os.path.join(index_uri, config.name, namespace)
+		self.db_uri = os.path.join(db_uri, config.name, namespace)
 		self.db_storage_options = storage_options
 		self.redis_host = redis
 		self.role = role
@@ -81,7 +81,7 @@ class Index:
 	def load(self):
 		with self.lock.gen_wlock():
 			# load delta table
-			db_table = db.KVDeltaTable(self.db_uri, self.config['schema'], self.db_storage_options)
+			db_table = db.KVDeltaTable(self.db_uri, self.config.schema, self.db_storage_options)
 			db_table.get_dt()
 
 			# load index file
@@ -95,8 +95,8 @@ class Index:
 					try:
 						fp.close()
 						self.fs.download(fpath, fp.name)
-						space = self.config['metric_type']
-						dim = self.config['dimension']
+						space = self.config.metric_type
+						dim = self.config.dimension
 						p = hnswlib.Index(space=space, dim = dim)
 						p.load_index(fp.name)
 						self.index = p
@@ -120,6 +120,12 @@ class Index:
 			ids, distances = self.index.knn_query(embedding, k=k)
 			return ids, distances
 
+
+	def filter(self, output_fields, filters=None):
+		with self.lock.gen_rlock():
+			db_table = db.KVDeltaTable(self.db_uri, self.config.schema, self.db_storage_options)
+			return db_table.to_pandas(columns=output_fields, filters=filters)
+
 	def save_index_meta(self, cache, req):
 		user = os.environ.get('API_USER')
 		key = 'index:{}:{}'.format(user, req['name'])
@@ -142,12 +148,12 @@ class Index:
 	
 	def create_index(self):
 		# create index inside the lock
-		space = self.config['metric_type']
-		dim = self.config['dimension']
-		params = self.config['params']
-		max_elements = params['max_elements']
-		ef_construction = params['ef_construction']
-		M = params['M']
+		space = self.config.metric_type
+		dim = self.config.dimension
+		params = self.config.params
+		max_elements = params.max_elements
+		ef_construction = params.ef_construction
+		M = params.M
 		#num_threads = params['num_threads']
 		p = hnswlib.Index(space=space, dim = dim)
 		p.init_index(max_elements=max_elements, ef_construction=ef_construction, M=M)
@@ -158,11 +164,11 @@ class Index:
 	
 	def create_delta_table(self):
 		if self.role == 'singleton' or self.role == 'index-master':
-			db_table = db.KVDeltaTable(self.db_uri, self.config['schema'], self.db_storage_options)
+			db_table = db.KVDeltaTable(self.db_uri, self.config.schema, self.db_storage_options)
 			db_table.create()
 		elif self.role == 'index-segment':
 			# check the db_uri exists
-			db_table = db.KVDeltaTable(self.db_uri, self.config['schema'], self.db_storage_options)
+			db_table = db.KVDeltaTable(self.db_uri, self.config.schema, self.db_storage_options)
 			db_table.get_dt()
 
 
@@ -173,7 +179,7 @@ class Index:
 
 	def insertData(self, req):
 		# TODO: get namespace from request
-		table = db.KVDeltaTable(self.db_uri, self.config['schema'], self.db_storage_options)
+		table = db.KVDeltaTable(self.db_uri, self.config.schema, self.db_storage_options)
 		ids, vectors = table.get_ids_vectors(req)
 		with self.lock.gen_wlock():
 			# TODO: check index full
