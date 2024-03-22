@@ -5,236 +5,236 @@ import shutil
 
 class FileStorageFactory:
 
-	@staticmethod
-	def create(storage_options=None):
-		if storage_options is None:
-			return LocalStorage(storage_options)
-		elif storage_options.get('GOOGLE_APPLICATION_CREDENTIALS') is not None:
-			return GCStorage(storage_options)
-		elif storage_opitions.get('AWS_ACCESS_KEY_ID') is not None:
-			return S3Storage(storage_options)
-		else:
-			raise ValueError('storage provider not found')
+    @staticmethod
+    def create(storage_options=None):
+        if storage_options is None:
+            return LocalStorage(storage_options)
+        elif storage_options.get('GOOGLE_APPLICATION_CREDENTIALS') is not None:
+            return GCStorage(storage_options)
+        elif storage_opitions.get('AWS_ACCESS_KEY_ID') is not None:
+            return S3Storage(storage_options)
+        else:
+            raise ValueError('storage provider not found')
 
-	def __init__(self):
-		pass
+    def __init__(self):
+        pass
 
 class FileStorage:
 
-	def __init__(self, storage_options=None):
-		self.storage_options = storage_options
-	
-	def download(self, src_path, dest_path):
-		pass
+    def __init__(self, storage_options=None):
+        self.storage_options = storage_options
+    
+    def download(self, src_path, dest_path):
+        pass
 
-	def upload(self, src_path, dest_path):
-		pass
+    def upload(self, src_path, dest_path):
+        pass
 
-	def list(self, prefix, delimiter=None):
-		pass
+    def list(self, prefix, delimiter=None):
+        pass
 
-	def listdir(self, prefix):
-		pass
+    def listdir(self, prefix):
+        pass
 
-	def rename(self, src_path, dest_path):
-		pass
-	
-	def exists(self, path):
-		return False
+    def rename(self, src_path, dest_path):
+        pass
+    
+    def exists(self, path):
+        return False
 
-	def remove(self, path):
-		pass
+    def remove(self, path):
+        pass
 
-	def rmtree(self, path):
-		pass
+    def rmtree(self, path):
+        pass
 
 class LocalStorage(FileStorage):
 
-	def __init__(self, storage_options=None):
-		super().__init__(storage_options)
+    def __init__(self, storage_options=None):
+        super().__init__(storage_options)
 
-	def copy(self, src_path, dest_path):
-		pass
+    def copy(self, src_path, dest_path):
+        pass
 
-	def download(self, src_path, dest_path):
-		self.copy(src_path, dest_path)
+    def download(self, src_path, dest_path):
+        self.copy(src_path, dest_path)
 
-	def upload(self, src_path, dest_path):
-		self.copy(src_path, dest_path)
+    def upload(self, src_path, dest_path):
+        self.copy(src_path, dest_path)
 
-	def list(self, prefix, delimiter=None):
-		for path, dirs, files in os.walk(prefix):
-			print('path=', path)
-			print('dirs=', dirs)
-			print('files=', files)
+    def list(self, prefix, delimiter=None):
+        for path, dirs, files in os.walk(prefix):
+            print('path=', path)
+            print('dirs=', dirs)
+            print('files=', files)
 
-	def listdir(self, prefix):
-		files = os.listdir(prefix)
-		l = []
-		for f in files:
-			path = os.path.join(prefix,f)
-			if os.path.isdir(path):
-				l.append(path)
-		return l
-			
+    def listdir(self, prefix):
+        files = os.listdir(prefix)
+        l = []
+        for f in files:
+            path = os.path.join(prefix,f)
+            if os.path.isdir(path):
+                l.append(path)
+        return l
+            
 
-	def rename(self, src_path, dest_path):
-		pass
+    def rename(self, src_path, dest_path):
+        pass
 
 
-	def exists(self, path):
-		return os.path.exists(path)
+    def exists(self, path):
+        return os.path.exists(path)
 
-	def rmtree(self, path):
-		if os.path.exists(path):
-			shutil.rmtree(path)
+    def rmtree(self, path):
+        if os.path.exists(path):
+            shutil.rmtree(path)
 
-	def remove(self, path):
-		if os.path.exists(path):
-			os.remove(path)
+    def remove(self, path):
+        if os.path.exists(path):
+            os.remove(path)
 
 class S3Storage(FileStorage):
-	
-	def __init__(self):
-		super().__init__(storage_options)
+    
+    def __init__(self):
+        super().__init__(storage_options)
 
-	def download(self, src_path, dest_path):
-		if not src_path.startswith("s3://"):
-			raise ValueError('filepath is not begin with s3://')
-			
-		l = src_path[5:].split('/', 1)
+    def download(self, src_path, dest_path):
+        if not src_path.startswith("s3://"):
+            raise ValueError('filepath is not begin with s3://')
+            
+        l = src_path[5:].split('/', 1)
 
 class GCStorage(FileStorage):
 
-	def __init__(self, storage_options=None):
-		super().__init__(storage_options)
+    def __init__(self, storage_options=None):
+        super().__init__(storage_options)
 
-	def download(self, src_path, dest_path):
-		if not src_path.startswith("gs://"):
-			raise ValueError('filepath is not begin with gs://')
+    def download(self, src_path, dest_path):
+        if not src_path.startswith("gs://"):
+            raise ValueError('filepath is not begin with gs://')
 
-		l = src_path[5:].split('/', 1)
-		bucket_name = l[0]
-		blob_name = l[1]
-		client = storage.Client()
-		bucket = client.bucket(bucket_name)
-		blob = bucket.blob(blob_name)
-		blob.download_to_filename(dest_path)
-		
-	def upload(self, src_path, dest_path):
-		if not dest_path.startswith("gs://"):
-			raise ValueError('filepath is not begin with gs://')
+        l = src_path[5:].split('/', 1)
+        bucket_name = l[0]
+        blob_name = l[1]
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(blob_name)
+        blob.download_to_filename(dest_path)
+        
+    def upload(self, src_path, dest_path):
+        if not dest_path.startswith("gs://"):
+            raise ValueError('filepath is not begin with gs://')
 
-		l = dest_path[5:].split('/', 1)
-		bucket_name = l[0]
-		blob_name = l[1]
-		client = storage.Client()
-		bucket = client.bucket(bucket_name)
-		blob = bucket.blob(blob_name)
+        l = dest_path[5:].split('/', 1)
+        bucket_name = l[0]
+        blob_name = l[1]
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(blob_name)
 
-		# Optional: set a generation-match precondition to avoid potential race conditions
-		# and data corruptions. The request to upload is aborted if the object's
-		# generation number does not match your precondition. For a destination
-		# object that does not yet exist, set the if_generation_match precondition to 0.
-		# If the destination object already exists in your bucket, set instead a
-		# generation-match precondition using its generation number.
-		generation_match_precondition = None
-		blob.upload_from_filename(src_path, if_generation_match=generation_match_precondition)
+        # Optional: set a generation-match precondition to avoid potential race conditions
+        # and data corruptions. The request to upload is aborted if the object's
+        # generation number does not match your precondition. For a destination
+        # object that does not yet exist, set the if_generation_match precondition to 0.
+        # If the destination object already exists in your bucket, set instead a
+        # generation-match precondition using its generation number.
+        generation_match_precondition = None
+        blob.upload_from_filename(src_path, if_generation_match=generation_match_precondition)
 
-	def listdir(self, prefix):
-		if not prefix.startswith("gs://"):
-			raise ValueError('filepath is not begin with gs://')
-			
-		delimiter = '/'
-		p =  prefix[5:].split('/', 1)
-		bucket_name = p[0]
-		blob_name = p[1]
+    def listdir(self, prefix):
+        if not prefix.startswith("gs://"):
+            raise ValueError('filepath is not begin with gs://')
+            
+        delimiter = '/'
+        p =  prefix[5:].split('/', 1)
+        bucket_name = p[0]
+        blob_name = p[1]
 
-		client = storage.Client()
-		blobs = client.list_blobs(bucket_name, prefix=blob_name, delimiter = delimiter)
+        client = storage.Client()
+        blobs = client.list_blobs(bucket_name, prefix=blob_name, delimiter = delimiter)
 
-		for blob in blobs:
-			pass
+        for blob in blobs:
+            pass
 
-		dirs = []
-		for p in blobs.prefixes:
-			dirs.append(os.path.join("gs://", bucket_name, p))
+        dirs = []
+        for p in blobs.prefixes:
+            dirs.append(os.path.join("gs://", bucket_name, p))
 
-		return dirs
+        return dirs
 
-	def list(self, prefix, delimiter=None):
-		if not prefix.startswith("gs://"):
-			raise ValueError('filepath is not begin with gs://')
-			
-		l =  prefix[5:].split('/', 1)
-		bucket_name = l[0]
-		blob_name = l[1]
+    def list(self, prefix, delimiter=None):
+        if not prefix.startswith("gs://"):
+            raise ValueError('filepath is not begin with gs://')
+            
+        l =  prefix[5:].split('/', 1)
+        bucket_name = l[0]
+        blob_name = l[1]
 
-		client = storage.Client()
-		blobs = client.list_blobs(bucket_name, prefix=blob_name, delimiter = delimiter)
+        client = storage.Client()
+        blobs = client.list_blobs(bucket_name, prefix=blob_name, delimiter = delimiter)
 
-		print("blobs")
-		for blob in blobs:
-			print(blob.name, ", updated = ", blob.updated, ", gen=", blob.generation, ", etag=", blob.etag)
+        print("blobs")
+        for blob in blobs:
+            print(blob.name, ", updated = ", blob.updated, ", gen=", blob.generation, ", etag=", blob.etag)
 
-		if delimiter:
-			print('prefixes:')
-			for p in blobs.prefixes:
-				print(p)
+        if delimiter:
+            print('prefixes:')
+            for p in blobs.prefixes:
+                print(p)
 
-	def rename(self, src_path, dest_path):
-		if not src_path.startswith("gs://"):
-			raise ValueError('filepath is not begin with gs://')
-		if not dest_path.startswith("gs://"):
-			raise ValueError('filepath is not begin with gs://')
-			
-		s = src_path[5:].split('/', 1)
-		d = dest_path[5:].split('/', 1)
-		if s[0] != d[0]:
-			raise ValueError('rename must be in same bucket')
+    def rename(self, src_path, dest_path):
+        if not src_path.startswith("gs://"):
+            raise ValueError('filepath is not begin with gs://')
+        if not dest_path.startswith("gs://"):
+            raise ValueError('filepath is not begin with gs://')
+            
+        s = src_path[5:].split('/', 1)
+        d = dest_path[5:].split('/', 1)
+        if s[0] != d[0]:
+            raise ValueError('rename must be in same bucket')
 
-		bucket_name = s[0]
-		src_blob = s[1]
-		dest_blob = d[1]
-		client = storage.Client()
-		bucket = client.bucket(bucket_name)
-		blob = bucket.blob(src_blob)
-		new_blob = bucket.rename_blob(blob, dest_blob)
+        bucket_name = s[0]
+        src_blob = s[1]
+        dest_blob = d[1]
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(src_blob)
+        new_blob = bucket.rename_blob(blob, dest_blob)
 
-	def exists(self, path):
-		if not path.startswith("gs://"):
-			raise ValueError('filepath is not begin with gs://')
-		p = path[5:].split('/', 1)
-		bucket_name = p[0]
-		blob_name = p[1]
+    def exists(self, path):
+        if not path.startswith("gs://"):
+            raise ValueError('filepath is not begin with gs://')
+        p = path[5:].split('/', 1)
+        bucket_name = p[0]
+        blob_name = p[1]
 
-		client = storage.Client()
-		bucket = client.bucket(bucket_name)
-		blob = bucket.blob(blob_name)
-		return blob.exists()
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(blob_name)
+        return blob.exists()
 
-	def rmtree(self, path):
-		if not path.startswith("gs://"):
-			raise ValueError('filepath is not begin with gs://')
-		p = path[5:].split('/', 1)
-		bucket_name = p[0]
-		prefix = p[1]
-		client = storage.Client()
-		bucket = client.bucket(bucket_name)
-		blobs = bucket.list_blobs(prefix=prefix)
-		for blob in blobs:
-			blob.delete()
+    def rmtree(self, path):
+        if not path.startswith("gs://"):
+            raise ValueError('filepath is not begin with gs://')
+        p = path[5:].split('/', 1)
+        bucket_name = p[0]
+        prefix = p[1]
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blobs = bucket.list_blobs(prefix=prefix)
+        for blob in blobs:
+            blob.delete()
 
-	def remove(self, path):
-		if not path.startswith("gs://"):
-			raise ValueError('filepath is not begin with gs://')
-		p = path[5:].split('/', 1)
-		bucket_name = p[0]
-		blob_name = p[1]
+    def remove(self, path):
+        if not path.startswith("gs://"):
+            raise ValueError('filepath is not begin with gs://')
+        p = path[5:].split('/', 1)
+        bucket_name = p[0]
+        blob_name = p[1]
 
-		client = storage.Client()
-		bucket = client.bucket(bucket_name)
-		blob = bucket.blob(blob_name)
-		blob.delete()
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(blob_name)
+        blob.delete()
 
 
