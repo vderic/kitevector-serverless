@@ -5,7 +5,7 @@ ENV PYTHONPATH "${PYTHONPATH}:/app"
 
 ENV PYTHONUNBUFFERED True
 
-ENV APP_HOME /app
+ENV APP_HOME "/app"
 
 RUN apt-get install -y apt-transport-https ca-certificates gnupg curl sudo
 
