@@ -10,3 +10,4 @@ numpy
 pyarrow
 google-cloud-storage
 dataclasses-json
+redis
