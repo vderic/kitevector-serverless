@@ -145,3 +145,7 @@ kubectl expose deployment kitevector --type=NodePort --port=8080
 # minikube service kitevector
 # kubectl describe pods -l app=kitevector
 
+# to delete deployment and service
+# kubectl delete -f deployment.yaml
+# kubectl delete service kitevector
+
