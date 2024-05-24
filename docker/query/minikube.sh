@@ -137,6 +137,8 @@ spec:
 status: {}
 EOF
 
+# use minikube docker environment
+# eval $(minikube docker-env)
 
 # for deployment 
 # kubectl apply -f deployment.yaml
