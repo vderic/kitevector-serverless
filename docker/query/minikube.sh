@@ -157,3 +157,6 @@ kubectl expose deployment kitevector --type=NodePort --port=8080
 
 # check status
 # kubectl get pods  -l app=kitevector
+
+# to generate sample deployment.yaml
+# kubectl create deployment kitevector  --image=kitevector:v1 -o yaml --dry-run=client
