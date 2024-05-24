@@ -137,6 +137,23 @@ spec:
 status: {}
 EOF
 
+cat <<EOF > service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kitevector-service
+  labels:
+    app: kitevector
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: kitevector
+EOF
+
 # use minikube docker environment
 # eval $(minikube docker-env)
 
