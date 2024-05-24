@@ -138,9 +138,9 @@ status: {}
 EOF
 
 
-kubectl apply -f deployment.yaml
-
-kubectl expose deployment kitevector --type=NodePort --port=8080
+# for deployment 
+# kubectl apply -f deployment.yaml
+# kubectl expose deployment kitevector --type=NodePort --port=8080
 
 # minikube service kitevector
 # kubectl describe pods -l app=kitevector
@@ -160,3 +160,8 @@ kubectl expose deployment kitevector --type=NodePort --port=8080
 
 # to generate sample deployment.yaml
 # kubectl create deployment kitevector  --image=kitevector:v1 -o yaml --dry-run=client
+
+# for pod
+kubectl apply -f pod.yaml
+kubectl port-forward pod/kitevector 8080:8080
+
