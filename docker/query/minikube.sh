@@ -94,7 +94,6 @@ spec:
       labels:
         app: kitevector
     spec:
-      replicas: 1
       containers:
       - image: kitevector:v1
         name: kitevector
