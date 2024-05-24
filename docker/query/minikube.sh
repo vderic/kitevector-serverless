@@ -149,3 +149,11 @@ kubectl expose deployment kitevector --type=NodePort --port=8080
 # kubectl delete -f deployment.yaml
 # kubectl delete service kitevector
 
+# describe pods
+# kubectl describe pods -l app=kitevector
+
+# check logs
+# kubectl logs -l app=kitevector
+
+# check status
+# kubectl get pods  -l app=kitevector
