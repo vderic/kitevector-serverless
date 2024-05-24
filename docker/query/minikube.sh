@@ -143,6 +143,7 @@ EOF
 # for deployment 
 # kubectl apply -f deployment.yaml
 # kubectl expose deployment kitevector --type=NodePort --port=8080
+# kubectl port-forward deployment/kitevector 8080:8080
 
 # minikube service kitevector
 # kubectl describe pods -l app=kitevector
