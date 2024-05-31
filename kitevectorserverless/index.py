@@ -177,7 +177,7 @@ class Index:
             self.create_index()
             self.create_delta_table()
 
-    def insertData(self, req):
+    def upsertData(self, req):
         # TODO: get namespace from request
         table = db.KVDeltaTable(self.db_uri, self.config.schema, self.db_storage_options)
         ids, vectors = table.get_ids_vectors(req)
@@ -186,7 +186,7 @@ class Index:
             if self.index.element_count + len(ids) > self.index.max_elements:
                 raise Exception('index is full')
             self.index.add_items(vectors, ids)
-            table.insert(req)
+            table.upsert(req)
 
     def updateData(self, req):
         with self.lock.gen_wlock():

@@ -257,11 +257,11 @@ class KVDeltaTable(BaseVector):
 
     def get_dt(self):
         if self.dt is None:
-            self.dt = DeltaTable(self.table_uri, storage_options=self.storage_options)
+            self.dt = DeltaTable(self.table_uri, storage_options=self.storage_options, configuration={"delta.enableChangeDataFeed": "true"})
         return self.dt
 
     def create(self):
-        self.dt = DeltaTable.create(self.table_uri, schema=self.pa_schema, storage_options=self.storage_options, mode='error')
+        self.dt = DeltaTable.create(self.table_uri, schema=self.pa_schema, storage_options=self.storage_options, mode='error', configuration={"delta.enableChangeDataFeed": "true"})
         #self.dt = DeltaTable.create(self.table_uri, schema=self.schema, storage_options=self.storage_options, mode='overwrite')
 
     def to_pandas(self, columns=None, filters=None):

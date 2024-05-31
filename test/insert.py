@@ -49,7 +49,7 @@ if __name__ == '__main__':
     headers = {'Content-Type': 'application/json'}
 
     
-    conn.request('POST', '/insert', jsonstr, headers)
+    conn.request('POST', '/upsert', jsonstr, headers)
     response = conn.getresponse()
     print(response.status, response.reason)
     data = response.read()

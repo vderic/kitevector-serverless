@@ -203,8 +203,8 @@ def remove_index():
     response = {'code': 200, 'message': 'ok'}
     return jsonify(response)
 
-@app.route("/insert", methods=['POST'])
-def insert():
+@app.route("/upsert", methods=['POST'])
+def upsert():
     if not request.is_json:
         abort(400, 'request is not in JSON format')
     
@@ -225,7 +225,7 @@ def insert():
             set_index(idx, ns)
     
     # get index and do the insert here
-    idx.insertData(data)
+    idx.upsertData(data)
     response = {'code': 200, 'message': 'ok'}
     return jsonify(response)
 
