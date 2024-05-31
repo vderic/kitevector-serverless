@@ -273,6 +273,16 @@ class KVDeltaTable(BaseVector):
         dt = self.get_dt()
         write_deltalake(dt, tab, mode='append')
 
+    def upsert(self, data):
+        tab = self.to_pyarrow_table(data)
+        dt = self.get_dt()
+
+        dt.merge(source=tab,
+                predicate="target.id = source.id",
+                source_alias="source",
+                target_alias="target").when_matched_update_all().when_not_matched_insert_all().execute()
+                
+
     def delete(self, predicate=None):
         dt = self.get_dt()
         dt.delete(predicate)
@@ -305,6 +315,10 @@ if __name__ == '__main__':
         data = {'id':[1,2,3,4], 
                 'vector':[[1.3,2.3,4.5,3.4], [1.3,4.5,6.3,2.6], [4.3,6.3,2.1,4.2], [2.6, 4.5,7.5,3.2]], 
                 'animal':['tiger', 'fox', 'frog', 'cat']}
+
+        newdata = {'id':[1,2,5,6], 
+                'vector':[[1.2,1.3,4.5,3.4], [1.1,4.3,6.3,2.6], [4.3,6.3,2.1,4.2], [2.6, 4.5,7.5,3.2]], 
+                'animal':['fruite', 'apple', 'frog', 'cat']}
 
         dt = KVDeltaTable("kvdb", index_dict['schema'])
         dt.create()

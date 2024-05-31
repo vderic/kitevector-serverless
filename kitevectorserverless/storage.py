@@ -11,7 +11,7 @@ class FileStorageFactory:
             return LocalStorage(storage_options)
         elif storage_options.get('GOOGLE_APPLICATION_CREDENTIALS') is not None:
             return GCStorage(storage_options)
-        elif storage_opitions.get('AWS_ACCESS_KEY_ID') is not None:
+        elif storage_options.get('AWS_ACCESS_KEY_ID') is not None:
             return S3Storage(storage_options)
         else:
             raise ValueError('storage provider not found')
