@@ -47,7 +47,7 @@ if __name__ == '__main__':
         created = False
         if created == False:
             dt.create()
-        dt.insert(data)
+        dt.upsert(data)
         dt.upsert(newdata)
 
         time.sleep(0.1)
@@ -58,6 +58,9 @@ if __name__ == '__main__':
 
         print(df.to_string())
         time.sleep(0.1)
+
+        files = dt.get_dt().file_uris()
+        print(files)
     except DeltaError as e:
         print(e)
 

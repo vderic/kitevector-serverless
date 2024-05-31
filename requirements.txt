@@ -3,7 +3,7 @@ gunicorn==21.2.0
 requests==2.31.0
 Werkzeug==3.0.1
 readerwriterlock==1.0.9
-deltalake==0.15.3
+deltalake==0.17.4
 hnswlib
 pandas
 numpy
