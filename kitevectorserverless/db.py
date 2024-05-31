@@ -257,7 +257,7 @@ class KVDeltaTable(BaseVector):
 
     def get_dt(self):
         if self.dt is None:
-            self.dt = DeltaTable(self.table_uri, storage_options=self.storage_options, configuration={"delta.enableChangeDataFeed": "true"})
+            self.dt = DeltaTable(self.table_uri, storage_options=self.storage_options)
         return self.dt
 
     def create(self):

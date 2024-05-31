@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
         dt = KVDeltaTable("kvdb", config.schema)
 
-        created = False
+        created = True
         if created == False:
             dt.create()
         dt.upsert(data)
